@@ -1,0 +1,20 @@
+{
+  "name": "desktop-mascot-companion",
+  "version": "1.0.0",
+  "description": "A cute, blocky desktop mascot companion with cursor-following eyes, timer, and customization.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox"
+  },
+  "keywords": [
+    "electron",
+    "desktop-mascot",
+    "companion",
+    "pomodoro",
+    "widget"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

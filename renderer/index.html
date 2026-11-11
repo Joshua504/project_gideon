@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>Desktop Mascot Companion</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app-stage" class="stage">
+    <!-- Floating Detail Panel (opens beside the Gooey Menu when a node is selected) -->
+    <div id="popup-menu" class="popup-menu interactive hidden" role="dialog" aria-label="Mascot Controls">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <span id="panel-title" class="panel-title">Focus &amp; Breaks</span>
+          <span id="xp-streak-badge" class="xp-streak-badge" title="Focus Level &amp; Daily Streak">Lv.1 • 🔥1</span>
+        </div>
+        <button id="panel-close-btn" class="panel-close-btn" title="Close panel">✕</button>
+      </div>
+
+      <!-- XP Progress Bar -->
+      <div class="xp-bar-track" title="Earn XP from Pomodoro rounds, completing goals, feeding treats &amp; head-pats!">
+        <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
+      </div>
+
+      <!-- PANEL 1: Focus / Pomodoro / Alarm / Ambient Sound (Node: Circle Timer) -->
+      <section id="tab-timer" class="tab-panel active">
+        <div class="mode-pills">
+          <button class="mode-pill active" data-timer-mode="pomodoro">Pomodoro</button>
+          <button class="mode-pill" data-timer-mode="countdown">Timer</button>
+          <button class="mode-pill" data-timer-mode="alarm">Alarm</button>
+        </div>
+
+        <div class="timer-display-row">
+          <div>
+            <span id="menu-timer-readout" class="timer-readout">25:00</span>
+            <div id="menu-cycle-subtext" class="cycle-subtext">Focus • Round 1/4</div>
+          </div>
+          <span id="menu-timer-status" class="timer-status-badge">Ready</span>
+        </div>
+
+        <!-- Pomodoro Work / Break Settings -->
+        <div id="pomodoro-controls" class="sub-controls">
+          <div class="dual-field-row">
+            <label>
+              <span>Focus (m)</span>
+              <input id="pomo-focus-input" class="focusable-input" type="number" min="1" max="180" value="25" />
+            </label>
+            <label>
+              <span>Break (m)</span>
+              <input id="pomo-break-input" class="focusable-input" type="number" min="1" max="60" value="5" />
+            </label>
+          </div>
+          <div class="field-row compact">
+            <label for="pomo-autocycle-toggle">Auto-run breaks &amp; next round</label>
+            <input id="pomo-autocycle-toggle" type="checkbox" checked />
+          </div>
+        </div>
+
+        <!-- Classic Countdown Settings -->
+        <div id="countdown-controls" class="sub-controls hidden">
+          <div class="preset-row">
+            <button class="chip-btn" data-minutes="5">5m</button>
+            <button class="chip-btn" data-minutes="10">10m</button>
+            <button class="chip-btn active" data-minutes="25">25m</button>
+            <button class="chip-btn" data-minutes="45">45m</button>
+          </div>
+          <div class="custom-minutes-row">
+            <label for="custom-minutes-input">Custom (min)</label>
+            <input
+              id="custom-minutes-input"
+              class="focusable-input"
+              type="number"
+              min="1"
+              max="240"
+              value="25"
+            />
+          </div>
+        </div>
+
+        <!-- Daily Alarm Settings -->
+        <div id="alarm-controls" class="sub-controls hidden">
+          <div class="field-row">
+            <label for="alarm-time-input">Alarm time</label>
+            <input id="alarm-time-input" class="focusable-input time-input" type="time" value="17:00" />
+          </div>
+          <div class="field-row">
+            <input
+              id="alarm-label-input"
+              class="focusable-input text-input"
+              type="text"
+              maxlength="40"
+              placeholder="Alarm reminder note..."
+            />
+          </div>
+        </div>
+
+        <!-- Ambient Lo-Fi / Rain / Brown Noise Generator -->
+        <div class="field-group">
+          <span class="field-label">🎧 Ambient Focus Audio (♫ Button)</span>
+          <div class="preset-row">
+            <button class="chip-btn ambient-btn active" data-ambient="off">Off</button>
+            <button class="chip-btn ambient-btn" data-ambient="lofi">🎹 Lo-Fi</button>
+            <button class="chip-btn ambient-btn" data-ambient="rain">🌧️ Rain</button>
+            <button class="chip-btn ambient-btn" data-ambient="brown">🌊 Noise</button>
+          </div>
+        </div>
+
+        <div class="field-row compact">
+          <label for="wellness-toggle">💧 Hydration &amp; posture nudges</label>
+          <div class="slider-wrap">
+            <button id="wellness-test-btn" class="chip-btn" title="Show a wellness reminder bubble now">Nudge</button>
+            <input id="wellness-toggle" type="checkbox" checked />
+          </div>
+        </div>
+
+        <div class="field-row compact">
+          <label for="sound-chime-toggle">🔔 Sound chime on finish</label>
+          <input id="sound-chime-toggle" type="checkbox" checked />
+        </div>
+
+        <div class="timer-actions">
+          <button id="timer-start-btn" class="action-btn primary">Start</button>
+          <button id="timer-pause-btn" class="action-btn hidden">Pause</button>
+          <button id="timer-resume-btn" class="action-btn primary hidden">Resume</button>
+          <button id="timer-skip-btn" class="action-btn hidden" title="Skip to next phase">Skip</button>
+          <button id="timer-cancel-btn" class="action-btn subtle hidden">Reset</button>
+        </div>
+      </section>
+
+      <!-- PANEL 2: 12 Character Shapes, Hats & Circadian Mode (Node: ★ Star) -->
+      <section id="tab-shapes" class="tab-panel hidden">
+        <div class="field-group">
+          <span class="field-label">Character Shape (12 Styles)</span>
+          <div class="shape-grid-12">
+            <button class="shape-btn active" data-shape="ears">Ears</button>
+            <button class="shape-btn" data-shape="clover">Clover</button>
+            <button class="shape-btn" data-shape="splat">Splat</button>
+            <button class="shape-btn" data-shape="snowman">Stack</button>
+            <button class="shape-btn" data-shape="jelly">Jelly</button>
+            <button class="shape-btn" data-shape="pillow">Pillow</button>
+            <button class="shape-btn" data-shape="kite">Kite</button>
+            <button class="shape-btn" data-shape="topknot">Bun</button>
+            <button class="shape-btn" data-shape="ufo">Cap</button>
+            <button class="shape-btn" data-shape="hourglass">Anvil</button>
+            <button class="shape-btn" data-shape="sub">Sub</button>
+            <button class="shape-btn" data-shape="cookie">Coin</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <span class="field-label">Head Accessory &amp; Eyewear</span>
+          <div class="accessory-grid">
+            <button class="acc-btn active" data-accessory="none">None</button>
+            <button class="acc-btn" data-accessory="sprout">🌱 Leaf</button>
+            <button class="acc-btn" data-accessory="crown">👑 Crown</button>
+            <button class="acc-btn" data-accessory="party">🎉 Party</button>
+            <button class="acc-btn" data-accessory="headphones">🎧 Audio</button>
+            <button class="acc-btn" data-accessory="sunglasses">🕶️ Shades</button>
+            <button class="acc-btn" data-accessory="nightcap">🌙 Nightcap</button>
+          </div>
+        </div>
+
+        <div class="field-row compact highlight-row">
+          <label for="circadian-toggle">☀️ Time-of-day circadian props</label>
+          <input id="circadian-toggle" type="checkbox" checked />
+        </div>
+      </section>
+
+      <!-- PANEL 3: Mood, Reaction Colors & Treats (Node: ✌ Peace Hand) -->
+      <section id="tab-expression" class="tab-panel hidden">
+        <div class="field-group">
+          <span class="field-label">Feed &amp; Hydrate Treats (Click or Drag onto Mascot • +10 XP)</span>
+          <div class="treat-row">
+            <button class="treat-btn" draggable="true" data-treat="boba" title="Click or drag Boba Tea onto mascot">🧋 Boba</button>
+            <button class="treat-btn" draggable="true" data-treat="cookie" title="Click or drag Cookie onto mascot">🍪 Cookie</button>
+            <button class="treat-btn" draggable="true" data-treat="coffee" title="Click or drag Espresso onto mascot">☕ Coffee</button>
+          </div>
+        </div>
+
+        <div class="field-row compact highlight-row">
+          <label for="auto-expr-toggle">✨ Spontaneous moods &amp; colors</label>
+          <input id="auto-expr-toggle" type="checkbox" checked />
+        </div>
+
+        <div class="expression-grid">
+          <button class="expr-btn active" data-expr="happy">💜 Happy</button>
+          <button class="expr-btn" data-expr="wink">💚 Wink</button>
+          <button class="expr-btn" data-expr="sleepy">💙 Sleepy</button>
+          <button class="expr-btn" data-expr="surprised">🧡 Surprised</button>
+          <button class="expr-btn" data-expr="dizzy">💛 Dizzy</button>
+          <button class="expr-btn" data-expr="angry">🩷 Fierce</button>
+          <button class="expr-btn" data-expr="sad">🍑 Pout</button>
+        </div>
+      </section>
+
+      <!-- PANEL 4: Sticky Task & Clipboard / Drag-and-Drop Pocket (Node: ✎ Pencil) -->
+      <section id="tab-task" class="tab-panel hidden">
+        <span class="field-label">Current Focus Goal (+25 XP)</span>
+        <input
+          id="sticky-task-input"
+          class="focusable-input text-input"
+          type="text"
+          maxlength="50"
+          placeholder="e.g. Ship landing page..."
+        />
+        <div class="timer-actions">
+          <button id="task-complete-btn" class="action-btn primary">✓ Complete</button>
+          <button id="task-clear-btn" class="action-btn subtle">Clear</button>
+        </div>
+
+        <!-- Clipboard / Drag-and-Drop Pocket -->
+        <div class="pocket-section">
+          <div class="pocket-header-row">
+            <span class="field-label">📥 Mascot Pocket (Drop text on mascot)</span>
+            <button id="pocket-paste-btn" class="chip-btn" title="Save current clipboard text into pocket">+ Paste</button>
+          </div>
+          <div id="pocket-list" class="pocket-list"></div>
+        </div>
+      </section>
+
+      <!-- PANEL 5: Settings, Physics, Colors & Quit (Node: ⚙ Gear) -->
+      <section id="tab-customize" class="tab-panel hidden">
+        <div class="field-group">
+          <span class="field-label">Pastel Palette</span>
+          <div class="palette-row">
+            <button
+              class="palette-swatch"
+              data-body="#A695F5"
+              data-shade="#8772E8"
+              title="Lavender Purple"
+              style="--swatch-color: #A695F5; --swatch-border: #8772E8;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#FA9B78"
+              data-shade="#E27A54"
+              title="Coral Peach"
+              style="--swatch-color: #FA9B78; --swatch-border: #E27A54;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#79DF8E"
+              data-shade="#54C46B"
+              title="Mint Green"
+              style="--swatch-color: #79DF8E; --swatch-border: #54C46B;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#FA969A"
+              data-shade="#E07176"
+              title="Soft Rose"
+              style="--swatch-color: #FA969A; --swatch-border: #E07176;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#86C5FF"
+              data-shade="#5AA8F0"
+              title="Sky Blue"
+              style="--swatch-color: #86C5FF; --swatch-border: #5AA8F0;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#FCA862"
+              data-shade="#E5893C"
+              title="Warm Apricot"
+              style="--swatch-color: #FCA862; --swatch-border: #E5893C;"
+            ></button>
+            <button
+              class="palette-swatch"
+              data-body="#F5CA7B"
+              data-shade="#DDA94E"
+              title="Butter Yellow"
+              style="--swatch-color: #F5CA7B; --swatch-border: #DDA94E;"
+            ></button>
+          </div>
+        </div>
+
+        <div class="field-row compact">
+          <label for="reaction-color-toggle">🎨 Shift color with reaction</label>
+          <input id="reaction-color-toggle" type="checkbox" checked />
+        </div>
+
+        <div class="field-row compact">
+          <label for="body-color-picker">Custom color</label>
+          <input id="body-color-picker" type="color" value="#A695F5" />
+          <label class="checkbox-label">
+            <input id="custom-shade-toggle" type="checkbox" />
+            <span>Shade</span>
+          </label>
+          <input id="shade-color-picker" type="color" value="#8772E8" disabled />
+        </div>
+
+        <div class="field-row compact">
+          <label for="size-slider">Size</label>
+          <div class="slider-wrap">
+            <input id="size-slider" type="range" min="0" max="2" step="1" value="1" />
+            <span id="size-label" class="size-tag">Medium</span>
+          </div>
+        </div>
+
+        <div class="field-row compact">
+          <label for="gravity-toggle">🍎 Gravity fall &amp; edge peek-a-boo</label>
+          <input id="gravity-toggle" type="checkbox" checked />
+        </div>
+
+        <div class="field-row compact">
+          <label for="eyes-follow-toggle">👀 Eyes follow cursor</label>
+          <input id="eyes-follow-toggle" type="checkbox" checked />
+        </div>
+
+        <div class="field-row compact">
+          <label for="startup-toggle">🚀 Launch at startup</label>
+          <input id="startup-toggle" type="checkbox" />
+        </div>
+
+        <button id="settings-quit-btn" class="action-btn quit-full-btn">Quit Mascot Companion</button>
+      </section>
+    </div>
+
+    <!-- Mascot Dock Area -->
+    <div id="mascot-dock" class="mascot-dock">
+      <!-- Floating Status / Timer / Task / Wellness Stack above Mascot -->
+      <div class="floating-badges">
+        <div id="offline-badge" class="offline-badge interactive hidden" title="No Wi-Fi / Offline connection detected">
+          <span>☁️? Offline</span>
+        </div>
+
+        <div id="wellness-bubble" class="wellness-bubble interactive hidden" title="Click to dismiss (+10 XP)">
+          <span id="wellness-bubble-text">💧 Sip some water!</span>
+        </div>
+
+        <div id="task-bubble" class="task-bubble interactive hidden" title="Click to edit goal">
+          <span id="task-bubble-text"></span>
+        </div>
+
+        <div id="timer-bubble" class="timer-bubble interactive hidden" title="Click to open Focus &amp; Alarm">
+          <span id="bubble-phase-icon">🎯</span>
+          <span id="bubble-timer-text">25:00</span>
+        </div>
+      </div>
+
+      <!-- Floating Hearts & Sparkles Particle Layer (Head-pats, Treats & Level-Up) -->
+      <div id="floating-particles" class="floating-particles" aria-hidden="true"></div>
+
+      <!-- Pure Small Flash Iconhugging the Mascot's body when charging -->
+      <div id="charging-badge" class="charging-flash hidden" title="Charging ⚡" aria-label="Charging">
+        <svg viewBox="0 0 28 36" width="14" height="18">
+          <polygon
+            points="17,1 3,19 13,19 10,35 25,15 15,15"
+            fill="#FACC15"
+            stroke="#CA8A04"
+            stroke-width="2.2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+
+      <!-- Sleepy / Low Battery Tired Zzz floating indicator -->
+      <div id="sleep-indicator" class="sleep-indicator hidden" aria-hidden="true">
+        <span>z</span><span>Z</span><span>Z</span>
+      </div>
+
+      <!-- ================================================================
+           GOOEY METABALL DOUBLE-CHAIN MENU CURVING AROUND THE MASCOT
+           (Inner 3-node chain hugs the mascot; outer 5-node chain wraps around it)
+           ================================================================ -->
+      <div id="radial-ring" class="gooey-menu interactive hidden" role="menu" aria-label="Mascot Menu">
+        <div class="gooey-menu-inner">
+          <svg class="gooey-chains-svg" viewBox="0 0 215 205" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- filterUnits="userSpaceOnUse" guarantees the SVG filter NEVER clips the outer circles -->
+              <filter
+                id="gooey-chain-filter"
+                filterUnits="userSpaceOnUse"
+                x="-40"
+                y="-40"
+                width="310"
+                height="300"
+              >
+                <feGaussianBlur in="SourceGraphic" stdDeviation="6.5" result="blur" />
+                <feColorMatrix
+                  in="blur"
+                  mode="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 24 -10"
+                  result="goo"
+                />
+                <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="rgba(20, 20, 35, 0.22)" />
+              </filter>
+            </defs>
+
+            <!-- Chain 1 (Inner 3-Node Arc hugging the mascot: Star -> Peace -> Heart) -->
+            <g class="goo-chain-group" filter="url(#gooey-chain-filter)">
+              <line x1="152" y1="92" x2="116" y2="118" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <line x1="116" y1="118" x2="95" y2="158" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <circle cx="152" cy="92" r="21" fill="#FFFFFF" />
+              <circle cx="116" cy="118" r="21" fill="#FFFFFF" />
+              <circle cx="95" cy="158" r="21" fill="#FFFFFF" />
+            </g>
+
+            <!-- Chain 2 (Outer 5-Node Arc curving around Chain 1: Timer -> Pencil -> Music -> Walk -> Gear) -->
+            <g class="goo-chain-group" filter="url(#gooey-chain-filter)">
+              <line x1="165" y1="34" x2="120" y2="48" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <line x1="120" y1="48" x2="80" y2="76" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <line x1="80" y1="76" x2="52" y2="116" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <line x1="52" y1="116" x2="38" y2="162" stroke="#FFFFFF" stroke-width="23" stroke-linecap="round" />
+              <circle cx="165" cy="34" r="21" fill="#FFFFFF" />
+              <circle cx="120" cy="48" r="21" fill="#FFFFFF" />
+              <circle cx="80" cy="76" r="21" fill="#FFFFFF" />
+              <circle cx="52" cy="116" r="21" fill="#FFFFFF" />
+              <circle cx="38" cy="162" r="21" fill="#FFFFFF" />
+            </g>
+          </svg>
+
+          <!-- CHAIN 1 NODES (Inner 3 Connected White Circles hugging mascot) -->
+          <!-- 1. Star (Shapes & Hats) -->
+          <button
+            class="ring-btn goo-node interactive"
+            style="left: 131px; top: 71px;"
+            data-ring-panel="shapes"
+            title="12 Character Shapes &amp; Hats"
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <path
+                d="M12 2.5L14.9 8.6L21.6 9.5L16.7 14.2L17.9 20.9L12 17.7L6.1 20.9L7.3 14.2L2.4 9.5L9.1 8.6L12 2.5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <!-- 2. Peace Hand (Moods, Treats & Reactions) -->
+          <button
+            class="ring-btn goo-node interactive"
+            style="left: 95px; top: 97px;"
+            data-ring-panel="expression"
+            title="Moods, Treats &amp; Reaction Colors"
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <path
+                d="M9.5 3C8.7 3 8 3.7 8 4.5V11H7V8.5C7 7.7 6.3 7 5.5 7S4 7.7 4 8.5V15.5C4 18.5 6.5 21 9.5 21H13.5C16.5 21 19 18.5 19 15.5V11.5C19 10.7 18.3 10 17.5 10S16 10.7 16 11.5V13H15V4.5C15 3.7 14.3 3 13.5 3S12 3.7 12 4.5V11H11V4.5C11 3.7 10.3 3 9.5 3Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <!-- 3. Heart (Quick Start / Pause Focus) -->
+          <button
+            id="ring-quick-focus-btn"
+            class="ring-btn goo-node interactive"
+            style="left: 74px; top: 137px;"
+            data-ring-action="toggle-focus"
+            title="Quick Start / Pause Pomodoro Focus"
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <path
+                d="M12 20.5C12 20.5 4 15 4 8.8C4 5.9 6.3 3.5 9.1 3.5C10.8 3.5 12 4.4 12 4.4C12 4.4 13.2 3.5 14.9 3.5C17.7 3.5 20 5.9 20 8.8C20 15 12 20.5 12 20.5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <!-- CHAIN 2 NODES (Outer 5 Connected White Circles) -->
+          <!-- 4. Circle Timer (Focus, Pomodoro & Alarm Panel) -->
+          <button
+            class="ring-btn goo-node interactive"
+            style="left: 144px; top: 13px;"
+            data-ring-panel="timer"
+            title="Focus, Pomodoro &amp; Daily Alarm"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <path d="M12 7.5V12.2L15.2 14.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+
+          <!-- 5. Pencil (Quick Focus Goal & Clipboard Pocket) -->
+          <button
+            class="ring-btn goo-node interactive"
+            style="left: 99px; top: 27px;"
+            data-ring-panel="task"
+            title="Quick Focus Goal &amp; Clipboard Pocket"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path
+                d="M16.5 3.5C17.3 2.7 18.7 2.7 19.5 3.5L20.5 4.5C21.3 5.3 21.3 6.7 20.5 7.5L8.5 19.5L4 20.5L5 16L16.5 3.5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <!-- 6. Coral-Red Music Note (Wear Headphones & Ambient Lo-Fi / Rain Audio) -->
+          <button
+            id="ring-sound-btn"
+            class="ring-btn goo-node music-node accent-red interactive"
+            style="left: 59px; top: 55px;"
+            data-ring-action="toggle-music"
+            title="Toggle Headphones &amp; Ambient Focus Audio"
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <path
+                d="M9 17.5C9 19.2 7.4 20.5 5.5 20.5S2 19.2 2 17.5 3.6 14.5 5.5 14.5C6.3 14.5 7 14.7 7.5 15.1V6.5L20 3.5V15.5C20 17.2 18.4 18.5 16.5 18.5S13 17.2 13 15.5 14.6 12.5 16.5 12.5C17.3 12.5 18 12.7 18.5 13.1V7.6L9 9.8V17.5Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <!-- 7. Envelope / Stroll (Toggle Screen-Edge Stroll Mode) -->
+          <button
+            id="ring-stroll-btn"
+            class="ring-btn goo-node interactive"
+            style="left: 31px; top: 95px;"
+            data-ring-action="toggle-stroll"
+            title="Toggle Screen-Edge Stroll Mode"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+              <path d="M4 7L12 13L20 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+
+          <!-- 8. Gear (Palette, Size, Physics, Startup & Quit Settings) -->
+          <button
+            class="ring-btn goo-node interactive"
+            style="left: 17px; top: 141px;"
+            data-ring-panel="customize"
+            title="Colors, Size, Physics &amp; Settings"
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2" />
+              <path
+                d="M12 3V5.2M12 18.8V21M3 12H5.2M18.8 12H21M5.6 5.6L7.2 7.2M16.8 16.8L18.4 18.4M18.4 5.6L16.8 7.2M7.2 16.8L5.6 18.4"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <circle cx="12" cy="12" r="6.8" fill="none" stroke="currentColor" stroke-width="1.8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mascot SVG Wrapper -->
+      <div
+        id="mascot-wrapper"
+        class="mascot-wrapper interactive"
+        data-expression="happy"
+        data-shape="ears"
+        data-accessory="none"
+        role="button"
+        aria-label="Desktop Mascot Companion"
+      >
+        <svg
+          id="mascot-svg"
+          class="mascot-svg"
+          viewBox="0 0 120 120"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <!-- ============================================================
+               ALL 12 FLAT PASTEL CHARACTER SHAPES FROM REFERENCE DESIGN
+               ============================================================ -->
+
+          <!-- 1. EARS -->
+          <g class="shape-group shape-ears">
+            <rect class="mascot-body" x="22" y="28" width="76" height="74" rx="11" />
+            <rect class="mascot-body" x="22" y="16" width="16" height="26" rx="8" />
+            <rect class="mascot-body" x="82" y="16" width="16" height="26" rx="8" />
+          </g>
+
+          <!-- 2. CLOVER -->
+          <g class="shape-group shape-clover">
+            <circle class="mascot-body" cx="42" cy="42" r="22" />
+            <circle class="mascot-body" cx="78" cy="42" r="22" />
+            <circle class="mascot-body" cx="42" cy="78" r="22" />
+            <circle class="mascot-body" cx="78" cy="78" r="22" />
+            <rect class="mascot-body" x="34" y="34" width="52" height="52" rx="14" />
+          </g>
+
+          <!-- 3. SPLAT -->
+          <g class="shape-group shape-splat">
+            <path
+              class="mascot-body"
+              d="M 55 15
+                 C 63 14, 67 24, 77 25
+                 C 89 26, 94 34, 90 46
+                 C 87 55, 102 62, 101 73
+                 C 100 84, 88 86, 80 94
+                 C 72 103, 62 106, 53 97
+                 C 44 89, 31 98, 24 89
+                 C 17 80, 26 68, 21 58
+                 C 15 48, 19 36, 30 34
+                 C 41 32, 46 16, 55 15 Z"
+            />
+          </g>
+
+          <!-- 4. SNOWMAN / STACK -->
+          <g class="shape-group shape-snowman">
+            <circle class="mascot-body" cx="60" cy="23" r="12.5" />
+            <rect class="mascot-body" x="20" y="31" width="80" height="40" rx="20" />
+            <rect class="mascot-body" x="20" y="65" width="80" height="39" rx="19.5" />
+            <rect class="mascot-body" x="34" y="56" width="52" height="22" rx="8" />
+          </g>
+
+          <!-- 5. JELLY -->
+          <g class="shape-group shape-jelly">
+            <path
+              class="mascot-body"
+              d="M 60 17
+                 C 65 17, 68 22, 74 24
+                 C 94 31, 102 52, 97 71
+                 C 94 79, 91 91, 82 91
+                 C 74 91, 71 102, 60 102
+                 C 49 102, 46 91, 38 91
+                 C 29 91, 26 79, 23 71
+                 C 18 52, 26 31, 46 24
+                 C 52 22, 55 17, 60 17 Z"
+            />
+          </g>
+
+          <!-- 6. PILLOW -->
+          <g class="shape-group shape-pillow">
+            <rect class="mascot-body" x="14" y="42" width="92" height="42" rx="13" />
+            <rect class="mascot-body" x="26" y="29" width="68" height="66" rx="22" />
+          </g>
+
+          <!-- 7. KITE -->
+          <g class="shape-group shape-kite">
+            <circle class="mascot-body" cx="60" cy="28" r="14" />
+            <circle class="mascot-body" cx="60" cy="92" r="14" />
+            <circle class="mascot-body" cx="26" cy="60" r="14" />
+            <circle class="mascot-body" cx="94" cy="60" r="14" />
+            <circle class="mascot-body" cx="44" cy="44" r="18" />
+            <circle class="mascot-body" cx="76" cy="44" r="18" />
+            <circle class="mascot-body" cx="44" cy="76" r="18" />
+            <circle class="mascot-body" cx="76" cy="76" r="18" />
+            <rect class="mascot-body" x="34" y="34" width="52" height="52" rx="16" />
+          </g>
+
+          <!-- 8. TOPKNOT / BUN -->
+          <g class="shape-group shape-topknot">
+            <circle class="mascot-body" cx="60" cy="30" r="15" />
+            <rect class="mascot-body" x="15" y="43" width="90" height="52" rx="26" />
+          </g>
+
+          <!-- 9. UFO / CAP -->
+          <g class="shape-group shape-ufo">
+            <rect class="mascot-body" x="45" y="32" width="30" height="22" rx="6" />
+            <rect class="mascot-body" x="14" y="43" width="92" height="50" rx="25" />
+          </g>
+
+          <!-- 10. HOURGLASS / ANVIL -->
+          <g class="shape-group shape-hourglass">
+            <rect class="mascot-body" x="44" y="20" width="32" height="18" rx="4" />
+            <path
+              class="mascot-body"
+              d="M 22 31
+                 L 98 31
+                 Q 98 59, 69 67
+                 L 51 67
+                 Q 22 59, 22 31 Z"
+            />
+            <path
+              class="mascot-body"
+              d="M 51 63
+                 L 69 63
+                 Q 98 73, 98 102
+                 L 22 102
+                 Q 22 73, 51 63 Z"
+            />
+          </g>
+
+          <!-- 11. SUB -->
+          <g class="shape-group shape-sub">
+            <rect class="mascot-body" x="46" y="35" width="28" height="16" rx="6" />
+            <rect class="mascot-body" x="11" y="54" width="98" height="28" rx="7" />
+            <rect class="mascot-body" x="21" y="43" width="78" height="50" rx="22" />
+          </g>
+
+          <!-- 12. COOKIE / COIN -->
+          <g class="shape-group shape-cookie">
+            <path
+              class="mascot-body"
+              d="M 60 20
+                 C 66 20, 70 15, 77 18
+                 C 84 21, 85 28, 90 32
+                 C 95 37, 101 38, 103 45
+                 C 105 52, 99 56, 99 62
+                 C 99 68, 105 72, 103 79
+                 C 101 86, 95 87, 90 92
+                 C 85 96, 84 103, 77 106
+                 C 70 109, 66 104, 60 104
+                 C 54 104, 50 109, 43 106
+                 C 36 103, 35 96, 30 92
+                 C 25 87, 19 86, 17 79
+                 C 15 72, 21 68, 21 62
+                 C 21 56, 15 52, 17 45
+                 C 19 38, 25 37, 30 32
+                 C 35 28, 36 21, 43 18
+                 C 50 15, 54 20, 60 20 Z"
+            />
+          </g>
+
+          <!-- ============================================================
+               HEAD ACCESSORIES & CIRCADIAN PROPS
+               (Sprout, Crown, Party, Headphones, Sunglasses, Nightcap)
+               ============================================================ -->
+          <g class="accessories-layer">
+            <g class="accessory acc-sprout">
+              <path d="M 60 20 Q 60 7 64 4" fill="none" stroke="#3B7A2A" stroke-width="3.2" stroke-linecap="round" />
+              <path d="M 62 7 C 74 1, 80 11, 62 13 Z" fill="#68C151" />
+              <path d="M 60 10 C 48 4, 44 14, 60 15 Z" fill="#52A73C" />
+            </g>
+
+            <g class="accessory acc-crown">
+              <path
+                d="M 42 20 L 46 5 L 55 13 L 60 2 L 65 13 L 74 5 L 78 20 Z"
+                fill="#FFD43B"
+              />
+              <circle cx="60" cy="13" r="2.2" fill="#FFFDF5" />
+            </g>
+
+            <g class="accessory acc-party">
+              <polygon points="46,21 60,1 74,21" fill="#EC4899" />
+              <line x1="51" y1="14" x2="69" y2="14" stroke="#FDE047" stroke-width="3" />
+              <circle cx="60" cy="2" r="4" fill="#38BDF8" />
+            </g>
+
+            <!-- Cozy Nightcap (Late Night Circadian / Manual) -->
+            <g id="svg-nightcap" class="accessory acc-nightcap">
+              <path
+                d="M 38 22 C 42 4, 72 2, 92 22 C 78 18, 66 20, 38 22 Z"
+                fill="#6366F1"
+              />
+              <rect x="35" y="19" width="44" height="6" rx="3" fill="#FFFDF5" />
+              <circle cx="93" cy="23" r="5" fill="#FFFDF5" />
+            </g>
+
+            <g id="svg-headphones" class="accessory acc-headphones">
+              <path d="M 15 58 C 15 14, 105 14, 105 58" fill="none" stroke="#334155" stroke-width="5.5" stroke-linecap="round" />
+              <rect x="7" y="46" width="11" height="24" rx="5.5" fill="#F44A34" stroke="#334155" stroke-width="2" />
+              <rect x="102" y="46" width="11" height="24" rx="5.5" fill="#F44A34" stroke="#334155" stroke-width="2" />
+            </g>
+          </g>
+
+          <!-- CPU / RAM High Load Sweat Drop Indicator -->
+          <g id="svg-sweat-drop" class="sweat-drop hidden">
+            <path
+              d="M 85 28 C 85 28, 79 38, 79 42 C 79 45.5, 81.7 48, 85 48 C 88.3 48, 91 45.5, 91 42 C 91 38, 85 28, 85 28 Z"
+              fill="#38BDF8"
+              stroke="#0284C7"
+              stroke-width="1.5"
+            />
+            <circle cx="83" cy="43" r="1.6" fill="#E0F2FE" />
+          </g>
+
+          <!-- ============================================================
+               MINIMALIST TWO-WHITE-DOT FACE RIG (Matches Reference Image)
+               ============================================================ -->
+          <g id="eyes-rig" class="mascot-face" transform="translate(0, 0)">
+            <!-- Rosy Blush Cheeks (Shown on Head-Patting & Feeding Treats) -->
+            <g id="svg-blush" class="blush-cheeks hidden">
+              <ellipse cx="35" cy="71" rx="6.5" ry="3.8" fill="#FF758F" opacity="0.72" />
+              <ellipse cx="85" cy="71" rx="6.5" ry="3.8" fill="#FF758F" opacity="0.72" />
+            </g>
+
+            <g id="eye-left-open" class="eye-open eye-left">
+              <circle id="eye-dot-left" class="eye-dot" cx="48" cy="64" r="6.8" />
+            </g>
+
+            <g id="eye-right-open" class="eye-open eye-right">
+              <circle id="eye-dot-right" class="eye-dot" cx="72" cy="64" r="6.8" />
+            </g>
+
+            <g class="eyelids eyelids-angry">
+              <polygon class="lid-mask" points="38,53 58,59 58,64 38,57" />
+              <polygon class="lid-mask" points="82,53 62,59 62,64 82,57" />
+            </g>
+
+            <g class="eyelids eyelids-sad">
+              <polygon class="lid-mask" points="38,59 58,53 58,57 38,65" />
+              <polygon class="lid-mask" points="82,59 62,53 62,57 82,65" />
+            </g>
+
+            <g class="eye-special eye-wink-right">
+              <path class="stroke-eye-white" d="M 65 64 Q 72 56 79 64" />
+            </g>
+
+            <g class="eye-special eyes-sleepy">
+              <path class="stroke-eye-white" d="M 41 64 Q 48 70 55 64" />
+              <path class="stroke-eye-white" d="M 65 64 Q 72 70 79 64" />
+            </g>
+
+            <g class="eye-special eyes-blink">
+              <rect class="lid-mask" x="36" y="52" width="48" height="24" rx="6" />
+              <rect class="eye-dot" x="41" y="62.2" width="14" height="3.6" rx="1.8" />
+              <rect class="eye-dot" x="65" y="62.2" width="14" height="3.6" rx="1.8" />
+            </g>
+
+            <g class="eye-special eyes-dizzy">
+              <path class="stroke-eye-white" d="M 43 59 L 53 69 M 53 59 L 43 69" />
+              <path class="stroke-eye-white" d="M 67 59 L 77 69 M 77 59 L 67 69" />
+            </g>
+
+            <!-- Afternoon Cool Sunglasses (Circadian / Manual Shades) -->
+            <g id="svg-sunglasses" class="accessory acc-sunglasses">
+              <rect x="34" y="55" width="24" height="16" rx="4" fill="#1E293B" stroke="#FFFDF5" stroke-width="1.8" />
+              <rect x="62" y="55" width="24" height="16" rx="4" fill="#1E293B" stroke="#FFFDF5" stroke-width="1.8" />
+              <line x1="58" y1="61" x2="62" y2="61" stroke="#FFFDF5" stroke-width="2.2" />
+              <line x1="38" y1="59" x2="43" y2="66" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+              <line x1="66" y1="59" x2="71" y2="66" stroke="#64748B" stroke-width="2" stroke-linecap="round" />
+            </g>
+
+            <!-- Reading Glasses (Focus Phase) -->
+            <g id="prop-glasses" class="prop-glasses hidden">
+              <rect x="36" y="53" width="23" height="21" rx="6" fill="none" stroke="#FFFDF5" stroke-width="2.8" />
+              <rect x="61" y="53" width="23" height="21" rx="6" fill="none" stroke="#FFFDF5" stroke-width="2.8" />
+              <line x1="59" y1="63" x2="61" y2="63" stroke="#FFFDF5" stroke-width="2.8" />
+            </g>
+          </g>
+
+          <!-- Steaming Coffee Cup (Break Phase) -->
+          <g id="prop-coffee" class="prop-coffee hidden">
+            <path d="M 88 73 Q 86 67 90 63" fill="none" stroke="#FFFDF5" stroke-width="2" stroke-linecap="round" />
+            <path d="M 95 73 Q 93 67 97 63" fill="none" stroke="#FFFDF5" stroke-width="2" stroke-linecap="round" />
+            <rect x="82" y="76" width="20" height="22" rx="5" fill="#FFFDF5" />
+            <rect x="85" y="80" width="14" height="6" rx="2" fill="#78350F" />
+            <path d="M 102 80 C 108 80, 108 93, 102 93" fill="none" stroke="#FFFDF5" stroke-width="2.8" />
+          </g>
+
+          <!-- Treat Prop Overlay (Boba / Cookie / Coffee during feeding) -->
+          <g id="prop-treat" class="prop-treat hidden">
+            <circle cx="60" cy="84" r="11" fill="#FDE68A" stroke="#B45309" stroke-width="2" />
+            <circle cx="56" cy="81" r="2" fill="#78350F" />
+            <circle cx="64" cy="83" r="2" fill="#78350F" />
+            <circle cx="59" cy="88" r="2" fill="#78350F" />
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

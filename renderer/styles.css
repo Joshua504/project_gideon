@@ -1,0 +1,956 @@
+:root {
+  --body: #A695F5;
+  --shade: #8772E8;
+  --eye-white: #FFFDF5;
+  --pupil: #2D2A3E;
+  --mascot-size: 120px;
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--pupil);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Full transparent 500x500 window stage */
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Mascot Dock dynamically positioned anywhere inside the 500x500 stage so mascot reaches all 4 screen edges */
+.mascot-dock {
+  position: absolute;
+  left: var(--dock-x, 374px);
+  top: var(--dock-y, 374px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mascot Wrapper & Sizes */
+.mascot-wrapper {
+  width: var(--mascot-size);
+  height: var(--mascot-size);
+  cursor: grab;
+  transition: width 0.2s ease, height 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 5;
+}
+
+.mascot-wrapper:active {
+  cursor: grabbing;
+}
+
+.mascot-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center center;
+}
+
+/* ==========================================================================
+   Peek-a-Boo Screen-Edge Hiding:
+   Rotates 90° onto the side of the monitor and tucks halfway into the edge!
+   Applied on .mascot-svg so wrapper animations (music/hop/stroll) never override it.
+   ========================================================================== */
+.mascot-wrapper.peek-left .mascot-svg {
+  transform: translateX(-30%) rotate(90deg) !important;
+}
+
+.mascot-wrapper.peek-right .mascot-svg {
+  transform: translateX(30%) rotate(-90deg) !important;
+}
+
+/* ==========================================================================
+   All 12 Flat Pastel Character Shapes from Reference Artwork
+   ========================================================================== */
+.shape-group {
+  display: none;
+}
+
+.mascot-wrapper[data-shape="ears"] .shape-ears,
+.mascot-wrapper[data-shape="clover"] .shape-clover,
+.mascot-wrapper[data-shape="splat"] .shape-splat,
+.mascot-wrapper[data-shape="snowman"] .shape-snowman,
+.mascot-wrapper[data-shape="jelly"] .shape-jelly,
+.mascot-wrapper[data-shape="pillow"] .shape-pillow,
+.mascot-wrapper[data-shape="kite"] .shape-kite,
+.mascot-wrapper[data-shape="topknot"] .shape-topknot,
+.mascot-wrapper[data-shape="ufo"] .shape-ufo,
+.mascot-wrapper[data-shape="hourglass"] .shape-hourglass,
+.mascot-wrapper[data-shape="sub"] .shape-sub,
+.mascot-wrapper[data-shape="cookie"] .shape-cookie {
+  display: block;
+}
+
+.mascot-body {
+  fill: var(--body);
+  transition: fill 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ==========================================================================
+   Accessories, Circadian Props, Music Headphones & Pure Flash Icon Beside Mascot
+   ========================================================================== */
+.accessory {
+  display: none;
+}
+
+.mascot-wrapper[data-accessory="sprout"] .acc-sprout,
+.mascot-wrapper[data-accessory="crown"] .acc-crown,
+.mascot-wrapper[data-accessory="party"] .acc-party,
+.mascot-wrapper[data-accessory="headphones"] .acc-headphones,
+.mascot-wrapper[data-accessory="sunglasses"] .acc-sunglasses,
+.mascot-wrapper[data-accessory="nightcap"] .acc-nightcap,
+.mascot-wrapper.music-playing .acc-headphones,
+.mascot-wrapper.circadian-sunglasses .acc-sunglasses,
+.mascot-wrapper.circadian-nightcap .acc-nightcap {
+  display: block;
+}
+
+/* CPU / RAM High Load Sweat Drop */
+.sweat-drop {
+  animation: sweat-drip 1.3s ease-in-out infinite;
+}
+
+@keyframes sweat-drip {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.95; }
+  50% { transform: translateY(4px) scale(0.95, 1.06); opacity: 1; }
+}
+
+/* Pure Small Flash Bolt hugging the mascot's body (no background pill or text) */
+.charging-flash {
+  position: absolute;
+  right: calc(100% - 21px);
+  top: 52%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 12;
+  filter: drop-shadow(0 1.5px 3px rgba(202, 138, 4, 0.32));
+  animation: side-bolt-float 1.6s ease-in-out infinite;
+}
+
+@keyframes side-bolt-float {
+  0%, 100% { transform: translateY(-50%) scale(1); }
+  50% { transform: translateY(calc(-50% - 3px)) scale(1.08); }
+}
+
+/* Floating Hearts & Sparkles (Head-Pats, Treats, Level-Up) */
+.floating-particles {
+  position: absolute;
+  inset: -35px -20px 0 -20px;
+  pointer-events: none;
+  z-index: 20;
+  overflow: visible;
+}
+
+.particle-item {
+  position: absolute;
+  font-size: 16px;
+  font-weight: 800;
+  pointer-events: none;
+  animation: particle-rise 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes particle-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-38px) scale(0.85);
+  }
+}
+
+/* ==========================================================================
+   Minimalist Two-White-Dot Face Rig & Expressions
+   ========================================================================== */
+.eye-dot {
+  fill: var(--eye-white);
+  transition: r 0.18s ease;
+}
+
+.lid-mask {
+  fill: var(--body);
+  transition: fill 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.stroke-eye-white {
+  fill: none;
+  stroke: var(--eye-white);
+  stroke-width: 4.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.eyelids,
+.eye-special {
+  display: none;
+}
+
+.mascot-wrapper[data-expression="wink"] #eye-right-open {
+  display: none;
+}
+.mascot-wrapper[data-expression="wink"] .eye-wink-right {
+  display: block;
+}
+
+.mascot-wrapper[data-expression="sleepy"] .eye-open {
+  display: none;
+}
+.mascot-wrapper[data-expression="sleepy"] .eyes-sleepy {
+  display: block;
+}
+
+.mascot-wrapper[data-expression="angry"] .eyelids-angry {
+  display: block;
+}
+
+.mascot-wrapper[data-expression="sad"] .eyelids-sad {
+  display: block;
+}
+
+.mascot-wrapper[data-expression="surprised"] .eye-dot {
+  r: 8.4;
+}
+
+.mascot-wrapper[data-expression="dizzy"] .eye-open {
+  display: none;
+}
+.mascot-wrapper[data-expression="dizzy"] .eyes-dizzy {
+  display: block;
+}
+
+.mascot-wrapper.blinking .eyes-blink {
+  display: block;
+}
+
+/* ==========================================================================
+   Mascot Animations (Shake, Hop, Drop Bounce, Munching, Stroll)
+   ========================================================================== */
+@keyframes alert-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-6px, -3px) rotate(-6deg); }
+  30% { transform: translate(6px, -2px) rotate(6deg); }
+  45% { transform: translate(-6px, 2px) rotate(-5deg); }
+  60% { transform: translate(5px, 1px) rotate(5deg); }
+  75% { transform: translate(-4px, -1px) rotate(-3deg); }
+  90% { transform: translate(3px, 0) rotate(2deg); }
+}
+
+@keyframes happy-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-12px) scale(0.94, 1.07); }
+  60% { transform: translateY(2px) scale(1.07, 0.93); }
+}
+
+@keyframes drop-bounce {
+  0% { transform: translateY(-10px) scale(0.9, 1.12); }
+  42% { transform: translateY(6px) scale(1.16, 0.84); }
+  72% { transform: translateY(-4px) scale(0.96, 1.04); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+@keyframes munch-chew {
+  0%, 100% { transform: scale(1, 1); }
+  25% { transform: scale(1.08, 0.92) translateY(2px); }
+  50% { transform: scale(0.95, 1.05) translateY(-2px); }
+  75% { transform: scale(1.07, 0.93) translateY(2px); }
+}
+
+@keyframes stroll-waddle {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-4px) rotate(3deg); }
+}
+
+.mascot-wrapper.shaking {
+  animation: alert-shake 0.55s ease-in-out 3;
+}
+
+.mascot-wrapper.hopping {
+  animation: happy-hop 0.48s ease-in-out 2;
+}
+
+.mascot-wrapper.bouncing {
+  animation: drop-bounce 0.46s ease-out 1;
+}
+
+.mascot-wrapper.munching {
+  animation: munch-chew 0.36s ease-in-out 3;
+}
+
+.mascot-wrapper.strolling,
+.mascot-wrapper.music-playing {
+  animation: stroll-waddle 0.72s ease-in-out infinite;
+}
+
+/* When mascot is on the left side of the screen, flip menu & panel to open to the right */
+.stage.dock-on-left .charging-flash {
+  right: auto;
+  left: calc(100% - 21px);
+}
+
+.stage.dock-on-left .gooey-menu {
+  right: auto;
+  left: calc(100% - 48px);
+  transform: scaleX(-1);
+}
+
+.stage.dock-on-left .goo-node svg {
+  transform: scaleX(-1);
+}
+
+.stage.dock-on-left .popup-menu {
+  left: auto;
+  right: 14px;
+}
+
+/* ==========================================================================
+   GOOEY METABALL DOUBLE-CHAIN MENU CURVING AROUND THE MASCOT
+   ========================================================================== */
+.gooey-menu {
+  position: absolute;
+  right: calc(100% - 48px);
+  bottom: calc(100% - 98px);
+  width: 215px;
+  height: 205px;
+  z-index: 18;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.gooey-menu-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: goo-pop-in 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: bottom right;
+}
+
+@keyframes goo-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translate(14px, 14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+.gooey-chains-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Individual White Chain Nodes */
+.goo-node {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #7C7C7C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 0;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.goo-node:hover {
+  color: #F44A34;
+  transform: scale(1.18);
+}
+
+.goo-node.active,
+.goo-node.accent-red {
+  color: #F44A34;
+}
+
+/* ==========================================================================
+   Floating Timer, Task, Wellness & Offline Badges Above Mascot
+   ========================================================================== */
+.floating-badges {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 12;
+}
+
+.timer-bubble,
+.task-bubble,
+.wellness-bubble,
+.offline-badge {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--body);
+  border: 2.5px solid var(--shade);
+  box-shadow: 0 2px 0 var(--shade);
+  color: var(--pupil);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.35s ease, border-color 0.35s ease;
+}
+
+.task-bubble {
+  background: #FFFDF8;
+  font-size: 11px;
+  max-width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wellness-bubble {
+  background: #E0F2FE;
+  border-color: #38BDF8;
+  box-shadow: 0 2px 0 #38BDF8;
+  color: #0369A1;
+  font-size: 11px;
+}
+
+.offline-badge {
+  background: #FEF3C7;
+  border-color: #F59E0B;
+  box-shadow: 0 2px 0 #F59E0B;
+  color: #92400E;
+  font-size: 10.5px;
+}
+
+.timer-bubble.alert {
+  animation: alert-shake 0.55s ease-in-out infinite;
+}
+
+/* Sleepy / Tired Zzz Indicator */
+.sleep-indicator {
+  position: absolute;
+  top: -16px;
+  right: 2px;
+  display: flex;
+  gap: 2px;
+  font-weight: 800;
+  color: var(--shade);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.sleep-indicator span {
+  display: inline-block;
+  animation: float-z 2.2s ease-in-out infinite;
+}
+.sleep-indicator span:nth-child(1) { font-size: 11px; animation-delay: 0s; }
+.sleep-indicator span:nth-child(2) { font-size: 14px; animation-delay: 0.4s; }
+.sleep-indicator span:nth-child(3) { font-size: 17px; animation-delay: 0.8s; }
+
+@keyframes float-z {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ==========================================================================
+   Floating Detail Panel (Opens cleanly beside/above the Gooey Chains)
+   ========================================================================== */
+.popup-menu {
+  position: absolute;
+  left: 14px;
+  bottom: 18px;
+  width: 248px;
+  background: #FFFFFF;
+  border: 2.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(20, 20, 35, 0.16);
+  z-index: 25;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.panel-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.xp-streak-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1.5px solid #F59E0B;
+}
+
+.xp-bar-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--body), var(--shade));
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.panel-close-btn {
+  border: none;
+  background: #F44A34;
+  color: #FFFFFF;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.panel-close-btn:hover {
+  background: #D93823;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Mode Switcher Pills */
+.mode-pills {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.mode-pill {
+  border: none;
+  background: transparent;
+  color: var(--pupil);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.mode-pill.active {
+  background: var(--body);
+}
+
+/* Timer Display Row */
+.timer-display-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.timer-readout {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.cycle-subtext {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.timer-status-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--body);
+}
+
+.sub-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dual-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dual-field-row label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 4px 7px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dual-field-row input {
+  width: 44px;
+  padding: 2px 4px;
+  border: 2px solid var(--shade);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  background: #FFFFFF;
+  color: var(--pupil);
+  user-select: text;
+}
+
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.treat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.chip-btn,
+.shape-btn,
+.acc-btn,
+.expr-btn,
+.treat-btn {
+  border: 2px solid transparent;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--pupil);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 4px 3px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.chip-btn.active,
+.chip-btn:hover,
+.shape-btn.active,
+.shape-btn:hover,
+.acc-btn.active,
+.acc-btn:hover,
+.expr-btn.active,
+.expr-btn:hover,
+.treat-btn:hover {
+  background: var(--body);
+  border-color: var(--shade);
+}
+
+.custom-minutes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.custom-minutes-row input,
+.time-input {
+  width: 84px;
+  padding: 3px 6px;
+  border: 2px solid var(--shade);
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+  background: #FFFFFF;
+  color: var(--pupil);
+  user-select: text;
+}
+
+.text-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 2px solid var(--shade);
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #FFFFFF;
+  color: var(--pupil);
+  user-select: text;
+}
+
+/* Clipboard / Drag-and-Drop Pocket Section */
+.pocket-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1.5px solid rgba(0, 0, 0, 0.06);
+}
+
+.pocket-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pocket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.pocket-empty {
+  font-size: 10px;
+  opacity: 0.6;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.pocket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 6px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.pocket-item-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pocket-item-text:hover {
+  color: #F44A34;
+}
+
+.pocket-del-btn {
+  border: none;
+  background: transparent;
+  color: #9CA3AF;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 3px;
+}
+
+.pocket-del-btn:hover {
+  color: #F44A34;
+}
+
+.timer-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.action-btn {
+  flex: 1;
+  border: 2px solid var(--shade);
+  background: #FFFFFF;
+  color: var(--pupil);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 7px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.action-btn.primary {
+  background: var(--body);
+}
+
+.action-btn.subtle {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: transparent;
+}
+
+.action-btn.quit-full-btn {
+  margin-top: 2px;
+  background: #FEF2F2;
+  border-color: #F44A34;
+  color: #B42318;
+}
+
+.action-btn.quit-full-btn:hover {
+  background: #FEE2E2;
+}
+
+/* Customize Grids */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.72;
+}
+
+.shape-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.accessory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.palette-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.palette-swatch {
+  width: 23px;
+  height: 23px;
+  border-radius: 999px;
+  background: var(--swatch-color);
+  border: 2.5px solid var(--swatch-border);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.palette-swatch:hover {
+  transform: scale(1.14);
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.field-row.compact {
+  font-size: 10.8px;
+}
+
+.highlight-row {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+input[type="color"] {
+  width: 26px;
+  height: 20px;
+  border: 2px solid var(--shade);
+  border-radius: 6px;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+input[type="color"]:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#size-slider {
+  width: 72px;
+  accent-color: var(--shade);
+  cursor: pointer;
+}
+
+.size-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  min-width: 42px;
+  text-align: right;
+}
+
+.expression-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
