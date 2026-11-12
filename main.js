@@ -7,10 +7,12 @@ const {
   powerMonitor,
   clipboard,
   net,
+  globalShortcut,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { execFile, spawn } = require('child_process');
 const { loadSettings, saveSettings } = require('./settings');
 
 const WINDOW_WIDTH = 500;
@@ -28,6 +30,9 @@ let lastCursorPos = { x: null, y: null };
 let lastPowerState = { isCharging: null, level: null };
 let lastAudioPlaying = null;
 let lastTelemetry = { isHighLoad: null, isOnline: null, cpuLoadPct: 0, memUsedPct: 0 };
+let lastFocusedApp = { category: 'other', name: '' };
+let registeredShortcut = null;
+let voiceActivationProcess = null;
 let isIgnoringMouse = false;
 
 let currentWinPos = { x: 0, y: 0 };
@@ -57,6 +62,11 @@ if (process.platform === 'linux') {
   app.commandLine.appendSwitch('ozone-platform', 'x11');
   app.commandLine.appendSwitch('enable-transparent-visuals');
   app.commandLine.appendSwitch('log-level', '3');
+  app.commandLine.appendSwitch('disable-gpu-vsync');
+  app.commandLine.appendSwitch('disable-features', 'VaapiVideoDecode,VaapiVideoEncoder');
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('enable-speech-dispatcher');
+  app.commandLine.appendSwitch('enable-features', 'WebSpeechAPI');
 }
 
 function getMascotSizePx() {
@@ -315,6 +325,192 @@ function readSystemTelemetry() {
   return { isHighLoad, isOnline, cpuLoadPct, memUsedPct };
 }
 
+/**
+ * Detects the currently focused application and categorizes it.
+ * Categories: 'coding', 'gaming', 'video', 'browsing', 'music', 'terminal', 'messaging', 'other'
+ * Uses /proc on Linux and process name heuristics.
+ */
+function readFocusedApp() {
+  let name = '';
+  let category = 'other';
+
+  try {
+    // Linux: try to read the active window's process via xprop or /proc
+    if (process.platform === 'linux') {
+      // Method 1: Use xprop to get the WM_CLIENT_MACHINE and _NET_WM_PID
+      const { execSync } = require('child_process');
+      try {
+        const pid = execSync(
+          'xprop -root _NET_ACTIVE_WINDOW 2>/dev/null | awk \'{print $5}\'',
+          { encoding: 'utf-8', timeout: 2000 }
+        ).trim();
+        if (pid && pid !== '0x0') {
+          const decPid = parseInt(pid, 16);
+          if (!Number.isNaN(decPid) && decPid > 1) {
+            const commPath = `/proc/${decPid}/comm`;
+            if (fs.existsSync(commPath)) {
+              name = fs.readFileSync(commPath, 'utf-8').trim().toLowerCase();
+            }
+            // Fallback: read cmdline for more info
+            if (!name) {
+              const cmdlinePath = `/proc/${decPid}/cmdline`;
+              if (fs.existsSync(cmdlinePath)) {
+                const cmdline = fs.readFileSync(cmdlinePath, 'utf-8').split('\0').join(' ').toLowerCase();
+                // Extract the first executable name
+                const parts = cmdline.split(/\s+/);
+                for (const part of parts) {
+                  const base = part.split('/').pop();
+                  if (base && base.length > 1 && !base.startsWith('-')) {
+                    name = base.toLowerCase();
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (_e) {
+        // xprop not available or failed — fall through to process scanning
+      }
+
+      // Method 2: Fallback — scan known running processes by name
+      if (!name) {
+        try {
+          const { execSync } = require('child_process');
+          const procs = execSync(
+            'ps -eo pid,comm --sort=-start_time --no-headers 2>/dev/null | head -30',
+            { encoding: 'utf-8', timeout: 2000 }
+          ).trim();
+          // Get the most recently started foreground process (heuristic)
+          const lines = procs.split('\n').map(l => l.trim()).filter(l => l);
+          for (const line of lines) {
+            const parts = line.split(/\s+/);
+            if (parts.length >= 2) {
+              const procName = parts[parts.length - 1].toLowerCase();
+              if (procName && procName !== 'ps' && procName !== 'bash') {
+                name = procName;
+                break;
+              }
+            }
+          }
+        } catch (_e2) { /* ignore */ }
+      }
+    }
+
+    // Method 3: Cross-platform fallback — scan all processes for known apps
+    if (!name) {
+      const allCpus = os.cpus();
+      // On non-Linux, we can at least check os.availableParallelism
+      name = '';
+    }
+
+    // Categorize the detected process name
+    if (name) {
+      category = categorizeProcessName(name);
+    }
+  } catch (_err) {
+    // Ignore all detection errors
+  }
+
+  return { category, name };
+}
+
+/**
+ * Maps a process name to an app category based on known patterns.
+ */
+function categorizeProcessName(procName) {
+  const lower = procName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  // Coding / IDE
+  const codingPatterns = [
+    'code', 'vscode', 'code-oss', 'code-insiders',
+    'jetbrains', 'idea', 'pycharm', 'webstorm', 'phpstorm', 'rubymine',
+    'clion', 'rider', 'goland', 'datagrip', 'rider', 'androidstudio',
+    'intellij', 'goland', 'pycharm', 'webstorm',
+    'vim', 'nvim', 'emacs', 'nano', 'sublime', 'atom',
+    'visualstudiocode', 'vscodium',
+    'gimp', 'blender', 'kdenlive', 'obs', 'shotcut',
+    'insomnia', 'postman', 'thunderbird',
+  ];
+
+  // Gaming
+  const gamingPatterns = [
+    'steam', 'heroic', 'lutris', 'wine', 'proton', 'bottles',
+    'minecraft', 'gamemode', 'gamemoderun',
+    'unity', 'unreal', 'godot',
+    'dxvk', 'vkd3d',
+  ];
+
+  // Video / conferencing
+  const videoPatterns = [
+    'zoom', 'teams', 'discord', 'slack', 'meet', 'jitsi',
+    'skype', 'signal', 'telegram', 'obsidian',
+    'vlc', 'mpv', 'totem', 'celluloid', 'smplayer', 'kaffeine',
+    'firefox', 'chrome', 'chromium', 'brave', 'edge', 'opera',
+    'electron', // many video apps are electron-based
+  ];
+
+  // Browsing
+  const browsingPatterns = [
+    'firefox', 'firefox-esr', 'librewolf', 'waterfox',
+    'chrome', 'chromium', 'chromium-browser',
+    'brave', 'brave-browser',
+    'edge', 'msedge',
+    'opera', 'vivaldi',
+    'epiphany', 'surf', 'qutebrowser',
+    'safari',
+  ];
+
+  // Music / audio
+  const musicPatterns = [
+    'spotify', 'rhythmbox', 'clementine', 'audacious', 'lollypop',
+    'popsicle', 'ncmpcpp', 'cmus', 'audacity', 'ardour',
+    'vlc', 'mpv', 'pavucontrol', 'qasmixer',
+  ];
+
+  // Terminal
+  const terminalPatterns = [
+    'bash', 'zsh', 'fish', 'sh', 'dash', 'ksh',
+    'gnome-terminal', 'konsole', 'tilix', 'alacritty', 'kitty',
+    'foot', 'st', 'rxvt', 'xterm', 'urxvt', 'terminator',
+    'xfce4-terminal', 'mate-terminal', 'lxterminal',
+    'wezterm', 'ghostty', 'tabby', 'warp',
+  ];
+
+  // Messaging
+  const messagingPatterns = [
+    'discord', 'slack', 'telegram', 'signal', 'whatsapp',
+    'ferdi', 'ferdium', 'rambox', 'franz',
+    'element', 'riot', 'matrix', 'fractal',
+    'thunderbird', 'evolution', 'geary', 'sylpheed',
+    'mattermost', 'rocket.chat',
+  ];
+
+  // Check categories in priority order
+  if (matchPatterns(lower, codingPatterns)) return 'coding';
+  if (matchPatterns(lower, gamingPatterns)) return 'gaming';
+  if (matchPatterns(lower, messagingPatterns)) return 'messaging';
+  if (matchPatterns(lower, videoPatterns)) return 'video';
+  if (matchPatterns(lower, musicPatterns)) return 'music';
+  if (matchPatterns(lower, browsingPatterns)) return 'browsing';
+  if (matchPatterns(lower, terminalPatterns)) return 'terminal';
+
+  return 'other';
+}
+
+/**
+ * Checks if a normalized process name matches any pattern in the list.
+ */
+function matchPatterns(normalizedName, patterns) {
+  for (const pattern of patterns) {
+    const p = pattern.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalizedName === p || normalizedName.includes(p) || p.includes(normalizedName)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function broadcastSystemStatus(force = false) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
@@ -343,6 +539,17 @@ function broadcastSystemStatus(force = false) {
   ) {
     lastTelemetry = telemetry;
     mainWindow.webContents.send('system:telemetry', telemetry);
+  }
+
+  // App Usage Awareness — detect focused app and broadcast category changes
+  const focusedApp = readFocusedApp();
+  if (
+    force ||
+    focusedApp.category !== lastFocusedApp.category ||
+    focusedApp.name !== lastFocusedApp.name
+  ) {
+    lastFocusedApp = focusedApp;
+    mainWindow.webContents.send('app:awareness', focusedApp);
   }
 }
 
@@ -490,7 +697,7 @@ function createMainWindow() {
     fullscreenable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    focusable: process.platform === 'linux',
+    focusable: false,
     hasShadow: false,
     show: false,
     webPreferences: {
@@ -507,18 +714,12 @@ function createMainWindow() {
 
   applyMascotScreenPosition(initialMascotPos.x, initialMascotPos.y);
 
+  // On Linux, keep the window able to receive mouse events so the mascot
+  // is clickable. The window is focusable:false and transparent, so it
+  // won't steal focus from other apps.
   if (process.platform !== 'linux') {
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
     isIgnoringMouse = true;
-  } else {
-    mainWindow.setShape([
-      {
-        x: Math.max(0, mascotState.inWinX - 15),
-        y: Math.max(0, mascotState.inWinY - 15),
-        width: 170,
-        height: 170,
-      },
-    ]);
   }
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
@@ -531,6 +732,9 @@ function createMainWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     lastCursorPos = { x: null, y: null };
     mainWindow.webContents.send('window:mascot-layout', mascotState);
+    if (registeredShortcut) {
+      mainWindow.webContents.send('voice:shortcut-registered', registeredShortcut);
+    }
     syncCursorPolling();
     broadcastSystemStatus(true);
     if (!statusPollTimer) {
@@ -595,8 +799,10 @@ function syncCursorPolling() {
   stopCursorPolling();
   lastCursorPos = { x: null, y: null };
 
-  if (settings && settings.eyesFollowCursor) {
-    if (isWaylandSession) {
+  const needPoll = (settings && settings.eyesFollowCursor) || process.platform === 'linux';
+
+  if (needPoll) {
+    if (isWaylandSession && settings && settings.eyesFollowCursor) {
       createWaylandSensorWindow();
     }
     pollCursorPosition();
@@ -651,6 +857,10 @@ function registerIpcHandlers() {
     return readSystemTelemetry();
   });
 
+  ipcMain.handle('app:get-awareness', () => {
+    return readFocusedApp();
+  });
+
   ipcMain.handle('clipboard:write', (_event, text) => {
     if (typeof text === 'string' && text.length > 0) {
       clipboard.writeText(text);
@@ -669,7 +879,10 @@ function registerIpcHandlers() {
 
   ipcMain.on('window:set-shape', (_event, rects) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (process.platform === 'linux' && Array.isArray(rects)) {
+    // On Linux, setShape() resets the X11 input region, overriding setIgnoreMouseEvents.
+    // Skip it entirely on Linux to preserve click-through behavior.
+    if (process.platform === 'linux') return;
+    if (Array.isArray(rects)) {
       const cleanRects = rects.map((r) => ({
         x: Math.max(0, Math.floor(r.x)),
         y: Math.max(0, Math.floor(r.y)),
@@ -682,6 +895,7 @@ function registerIpcHandlers() {
 
   ipcMain.on('window:set-ignore-mouse', (_event, ignore) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    // On Linux, keep the window always able to receive mouse events
     if (process.platform === 'linux') return;
     const shouldIgnore = Boolean(ignore);
     if (shouldIgnore !== isIgnoringMouse) {
@@ -692,8 +906,8 @@ function registerIpcHandlers() {
 
   ipcMain.on('window:set-focusable', (_event, focusable) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
+    // On Linux, keep the window non-focusable to avoid blocking clicks on other apps
     if (process.platform === 'linux') {
-      if (focusable) mainWindow.focus();
       return;
     }
     mainWindow.setFocusable(Boolean(focusable));
@@ -870,6 +1084,187 @@ function registerIpcHandlers() {
   ipcMain.on('app:quit', () => {
     app.quit();
   });
+
+  // Notify renderer when name-call shortcut is pressed
+  ipcMain.on('voice:respond', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voice:respond', {
+        name: settings.mascotName || 'Otto',
+        voiceEnabled: settings.voiceEnabled !== false,
+      });
+    }
+  });
+
+  // Voice activation: start Python speech recognition process
+  ipcMain.handle('voice:activation:start', async (_event, { mascotName }) => {
+    stopVoiceActivation();
+    
+    try {
+      const scriptPath = path.join(__dirname, 'voice_activation.py');
+      voiceActivationProcess = spawn('python3', [scriptPath, mascotName || 'Otto'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      
+      voiceActivationProcess.stdout.on('data', (data) => {
+        const lines = data.toString().split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const msg = JSON.parse(trimmed);
+            console.log('[VOICE-ACT]', JSON.stringify(msg));
+            
+            if (msg.detected === true) {
+              // Wake word detected! Send to renderer
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('voice:activation:detected', {
+                  name: msg.name || mascotName || 'Otto',
+                  text: msg.text || '',
+                  voiceEnabled: settings.voiceEnabled !== false,
+                });
+              }
+            } else if (msg.status === 'listening') {
+              // Script is now actively listening
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('voice:activation:status', { status: 'listening' });
+              }
+            } else if (msg.status === 'error') {
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('voice:activation:status', { status: 'error', message: msg.message });
+              }
+            } else if (msg.status === 'heard') {
+              // Log what was heard for debugging
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('voice:activation:status', { status: 'heard', text: msg.text });
+              }
+            }
+          } catch (e) {
+            console.warn('[VOICE-ACT] Failed to parse JSON:', trimmed);
+          }
+        }
+      });
+      
+      voiceActivationProcess.stderr.on('data', (data) => {
+        console.error('[VOICE-ACT] stderr:', data.toString().trim());
+      });
+      
+      voiceActivationProcess.on('error', (err) => {
+        console.error('[VOICE-ACT] Process error:', err.message);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('voice:activation:status', { status: 'error', message: err.message });
+        }
+      });
+      
+      voiceActivationProcess.on('close', (code) => {
+        console.log('[VOICE-ACT] Process exited with code:', code);
+        voiceActivationProcess = null;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('voice:activation:status', { status: 'stopped' });
+        }
+      });
+      
+      console.log('[VOICE-ACT] Python process started');
+      return { success: true };
+    } catch (err) {
+      console.error('[VOICE-ACT] Failed to start:', err.message);
+      return { success: false, error: err.message };
+    }
+  });
+  
+  // Voice activation: stop Python speech recognition process
+  ipcMain.handle('voice:activation:stop', async () => {
+    stopVoiceActivation();
+    return { success: true };
+  });
+  
+  // Speak text using system TTS (spd-say on Linux, fallback to espeak)
+  ipcMain.handle('voice:speak', async (_event, { text, pitch, rate }) => {
+    try {
+      // On Linux, use spd-say (Speech Dispatcher) for reliable TTS
+      if (process.platform === 'linux') {
+        return new Promise((resolve) => {
+          const pitchArg = pitch ? Math.round(pitch * 6.5) : '50';
+          const speedArg = rate ? Math.round((rate - 0.5) * 100) : '5';
+          execFile(
+            'spd-say',
+            [text],
+            { env: { ...process.env, SPD_OPTIONS: `pitch=${pitchArg} speed=${speedArg}` } },
+            (error, stdout, stderr) => {
+              if (error) {
+                console.error('[VOICE] spd-say error:', error.message);
+                resolve({ success: false, error: error.message });
+              } else {
+                console.log('[VOICE] spd-say spoke:', text);
+                resolve({ success: true });
+              }
+            }
+          );
+        });
+      } else {
+        // Non-Linux: return success so renderer falls back to speechSynthesis
+        resolve({ success: false, error: 'not on Linux' });
+      }
+    } catch (err) {
+      console.error('[VOICE] speak error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+}
+
+/* ==========================================================================
+   Global Shortcut: Call mascot by name (Alt+O)
+   ========================================================================== */
+
+/**
+ * Stops the voice activation Python process if running.
+ */
+function stopVoiceActivation() {
+  if (voiceActivationProcess) {
+    console.log('[VOICE-ACT] Stopping Python process...');
+    try {
+      voiceActivationProcess.kill('SIGTERM');
+    } catch (e) {
+      console.warn('[VOICE-ACT] Error killing process:', e.message);
+    }
+    voiceActivationProcess = null;
+  }
+}
+
+function registerNameCallShortcut() {
+  globalShortcut.unregisterAll();
+
+  // Try multiple shortcut combinations until one succeeds
+  const shortcutsToTry = [
+    'CmdOrCtrl+Shift+O',
+    'CmdOrCtrl+Alt+O',
+    'F4',
+    'Alt+O',
+  ];
+
+  const callback = () => {
+    console.log('[VOICE] Global shortcut triggered!');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('voice:respond', {
+        name: settings.mascotName || 'Otto',
+        voiceEnabled: settings.voiceEnabled !== false,
+      });
+      console.log('[VOICE] Sent voice:respond IPC message to renderer');
+    } else {
+      console.error('[VOICE] mainWindow is null or destroyed!');
+    }
+  };
+
+  for (const shortcut of shortcutsToTry) {
+    const registered = globalShortcut.register(shortcut, callback);
+    if (registered) {
+      console.log('[VOICE] Shortcut registered:', shortcut);
+      return shortcut;
+    } else {
+      console.log('[VOICE] Shortcut already in use, trying next:', shortcut);
+    }
+  }
+  console.error('[VOICE] Failed to register any shortcut! All combinations are in use.');
+  return null;
 }
 
 app.whenReady().then(() => {
@@ -879,6 +1274,7 @@ app.whenReady().then(() => {
 
   settings = loadSettings();
   registerIpcHandlers();
+  registeredShortcut = registerNameCallShortcut();
 
   if (powerMonitor) {
     powerMonitor.on('on-ac', () => broadcastSystemStatus(true));
@@ -892,6 +1288,11 @@ app.whenReady().then(() => {
     const initPos = getInitialMascotScreenPos();
     applyMascotScreenPosition(initPos.x, initPos.y);
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  stopVoiceActivation();
 });
 
 app.on('window-all-closed', () => {

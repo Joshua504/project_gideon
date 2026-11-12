@@ -41,14 +41,32 @@ const EYE_LERP_SPEED = 0.22;
 const IDLE_SLEEP_TIMEOUT_MS = 120 * 1000;
 const WELLNESS_INTERVAL_MS = 45 * 60 * 1000; // Every 45 minutes
 const LOW_BATTERY_THRESHOLD = 20;
+
+// Minion voice: pitch and rate settings for that distinctive sound
+const MINION_VOICE_PITCH = 1.6;       // High-pitched
+const MINION_VOICE_RATE = 1.2;        // Slightly fast
+const MINION_VOICE_VOLUME = 0.8;
+
+// Idle animation progressive stages (time in ms of idle before triggering)
+const IDLE_ANIM_YAWN_MS = 15 * 1000;       // Yawn after 15s of idle
+const IDLE_ANIM_STRETCH_MS = 30 * 1000;    // Stretch after 30s of idle
+const IDLE_ANIM_NAP_MS = 60 * 1000;        // Nap (Zzz) after 60s of idle
 const DRAG_THRESHOLD_PX = 4;
 
 const PANEL_TITLES = {
-  timer: 'Focus, Audio & Wellness',
-  shapes: '12 Shapes & Head Props',
-  expression: 'Moods, Treats & Colors',
-  task: 'Focus Goal & Pocket',
-  customize: 'Colors, Physics & Setup',
+  timer: 'Focus & Audio',
+  shapes: 'Shapes & Props',
+  expression: 'Moods & Treats',
+  task: 'Recent & Pocket',
+  customize: 'Preferences',
+};
+
+const PANEL_SUBHEADER_ACTIONS = {
+  timer: 'Reset',
+  shapes: 'Default',
+  expression: 'Default',
+  task: 'Clear all',
+  customize: 'Default',
 };
 
 // Application state
@@ -65,9 +83,17 @@ const state = {
   ambientMode: 'off', // 'off' | 'lofi' | 'rain' | 'brown'
   isHighLoad: false,
   isOnline: true,
+  focusedAppCategory: 'other',
+  focusedAppName: '',
   peekEdge: null, // 'left' | 'right' | null
   greetedMorningDate: '',
   lastCursorMoveAt: Date.now(),
+  idleAnimStage: 'none', // 'none' | 'yawn' | 'stretch' | 'nap'
+  idleAnimTriggered: { yawn: false, stretch: false, nap: false },
+  speaking: false,
+  speechBubbleTimer: null,
+  voiceActivationListening: false,
+  voiceRecognition: null,
   tempExpressionTimer: null,
   blushTimer: null,
   treatTimer: null,
@@ -93,6 +119,7 @@ const state = {
   drag: {
     active: false,
     moved: false,
+    clickTimer: null,
     startScreenX: 0,
     startScreenY: 0,
     lastScreenX: 0,
@@ -131,8 +158,15 @@ const dom = {
   eyeDotLeft: document.getElementById('eye-dot-left'),
   eyeDotRight: document.getElementById('eye-dot-right'),
   sleepIndicator: document.getElementById('sleep-indicator'),
+  idleZzz: document.getElementById('idle-zzz'),
+  speechBubble: document.getElementById('speech-bubble'),
+  speechBubbleText: document.getElementById('speech-bubble-text'),
+  voiceListeningBadge: document.getElementById('voice-listening-badge'),
   chargingBadge: document.getElementById('charging-badge'),
   offlineBadge: document.getElementById('offline-badge'),
+  appAwarenessBadge: document.getElementById('app-awareness-badge'),
+  appAwarenessIcon: document.getElementById('app-awareness-icon'),
+  appAwarenessText: document.getElementById('app-awareness-text'),
   wellnessBubble: document.getElementById('wellness-bubble'),
   wellnessBubbleText: document.getElementById('wellness-bubble-text'),
   floatingParticles: document.getElementById('floating-particles'),
@@ -151,10 +185,13 @@ const dom = {
   settingsQuitBtn: document.getElementById('settings-quit-btn'),
 
   popupMenu: document.getElementById('popup-menu'),
+  panelSearchInput: document.getElementById('panel-search-input'),
   panelTitle: document.getElementById('panel-title'),
   xpStreakBadge: document.getElementById('xp-streak-badge'),
+  panelSubheaderAction: document.getElementById('panel-subheader-action'),
   xpBarFill: document.getElementById('xp-bar-fill'),
   panelCloseBtn: document.getElementById('panel-close-btn'),
+  footerPills: document.querySelectorAll('.footer-pill[data-footer-panel]'),
   tabPanels: {
     timer: document.getElementById('tab-timer'),
     shapes: document.getElementById('tab-shapes'),
@@ -205,6 +242,12 @@ const dom = {
   sizeLabel: document.getElementById('size-label'),
   gravityToggle: document.getElementById('gravity-toggle'),
   eyesFollowToggle: document.getElementById('eyes-follow-toggle'),
+  appAwarenessToggle: document.getElementById('app-awareness-toggle'),
+  idleAnimationsToggle: document.getElementById('idle-animations-toggle'),
+  mascotNameInput: document.getElementById('mascot-name-input'),
+  voiceEnabledToggle: document.getElementById('voice-enabled-toggle'),
+  voiceActivationToggle: document.getElementById('voice-activation-toggle'),
+  voiceActivationStatus: document.getElementById('voice-activation-status'),
   startupToggle: document.getElementById('startup-toggle'),
 
   // Expression & Treats Elements
@@ -660,8 +703,9 @@ function renderPocketList(items = []) {
 
     const delBtn = document.createElement('button');
     delBtn.className = 'pocket-del-btn';
-    delBtn.textContent = '✕';
-    delBtn.title = 'Remove from pocket';
+    delBtn.setAttribute('aria-label', 'Remove');
+    delBtn.innerHTML =
+      '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4h11M5.5 4V2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V4m1.5 0v9a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 4 13V4h8Z"/><line x1="6.8" y1="6.8" x2="6.8" y2="11.2"/><line x1="9.2" y1="6.8" x2="9.2" y2="11.2"/></svg>';
     delBtn.addEventListener('click', () => {
       const next = items.filter((_, i) => i !== idx);
       updateSettings({ pocketItems: next });
@@ -711,6 +755,11 @@ function applySettingsToUI(settings) {
     gravityMode,
     circadianMode,
     wellnessReminders,
+    appAwareness,
+    idleAnimations,
+    mascotName,
+    voiceEnabled,
+    voiceActivation,
     ambientSound,
     launchAtStartup,
     pomodoro,
@@ -767,6 +816,12 @@ function applySettingsToUI(settings) {
   dom.sizeSlider.value = String(sizeInfo.sliderIndex);
   dom.sizeLabel.textContent = sizeInfo.label;
   dom.eyesFollowToggle.checked = Boolean(eyesFollowCursor);
+  dom.appAwarenessToggle.checked = (appAwareness !== false);
+  dom.idleAnimationsToggle.checked = (idleAnimations !== false);
+  if (dom.mascotNameInput) dom.mascotNameInput.value = mascotName || 'Otto';
+  dom.voiceEnabledToggle.checked = (voiceEnabled !== false);
+  dom.voiceActivationToggle.checked = (voiceActivation !== false);
+  updateVoiceActivationStatusUI(voiceActivation !== false);
   dom.startupToggle.checked = Boolean(launchAtStartup);
   dom.autoExprToggle.checked = Boolean(autoExpressions);
 
@@ -932,6 +987,53 @@ function applySystemTelemetry({ isHighLoad, isOnline }) {
   }
 }
 
+/**
+ * App Usage Awareness — maps the focused app category to a mascot reaction.
+ * Categories: 'coding', 'gaming', 'video', 'browsing', 'music', 'terminal', 'messaging', 'other'
+ */
+const APP_CATEGORY_REACTIONS = {
+  coding:    { icon: '💻', label: 'Coding',     expression: 'happy' },
+  gaming:    { icon: '🎮', label: 'Gaming',     expression: 'surprised' },
+  video:     { icon: '📺', label: 'Watching',   expression: 'sleepy' },
+  browsing:  { icon: '🌐', label: 'Browsing',   expression: 'happy' },
+  music:     { icon: '🎵', label: 'Music',      expression: 'wink' },
+  terminal:  { icon: '⌨️', label: 'Terminal',   expression: 'happy' },
+  messaging: { icon: '💬', label: 'Chatting',   expression: 'wink' },
+  other:     { icon: '💻', label: 'Working',    expression: null },
+};
+
+function applyAppAwareness({ category, name }) {
+  if (!state.settings || !state.settings.appAwareness) {
+    if (dom.appAwarenessBadge) {
+      dom.appAwarenessBadge.classList.add('hidden');
+    }
+    return;
+  }
+
+  const reaction = APP_CATEGORY_REACTIONS[category] || APP_CATEGORY_REACTIONS.other;
+  const prevCategory = state.focusedAppCategory;
+  state.focusedAppCategory = category;
+  state.focusedAppName = name || '';
+
+  // Update the floating badge
+  if (dom.appAwarenessBadge && dom.appAwarenessIcon && dom.appAwarenessText) {
+    const isOther = category === 'other';
+    dom.appAwarenessBadge.classList.toggle('hidden', isOther);
+    dom.appAwarenessIcon.textContent = reaction.icon;
+    dom.appAwarenessText.textContent = reaction.label;
+    dom.appAwarenessBadge.title = `Focused app: ${name || category}`;
+  }
+
+  // Trigger a temporary expression when the category changes (not on 'other')
+  if (prevCategory !== category && category !== 'other' && reaction.expression) {
+    if (!state.isSleepingFromIdle && !state.isLowBatteryTired && state.timer.status !== 'alert') {
+      triggerTemporaryExpression(reaction.expression, 3200, false);
+    }
+  }
+
+  syncInteractiveWindowShape();
+}
+
 async function initPowerAndAudioMonitoring() {
   window.mascotAPI.onPowerStatus((status) => {
     if (status && typeof status.isCharging === 'boolean') {
@@ -1008,6 +1110,21 @@ async function initPowerAndAudioMonitoring() {
   window.addEventListener('offline', () =>
     applySystemTelemetry({ isHighLoad: state.isHighLoad, isOnline: false })
   );
+
+  // App Usage Awareness
+  if (window.mascotAPI.onAppAwareness) {
+    window.mascotAPI.onAppAwareness((appInfo) => {
+      if (appInfo) applyAppAwareness(appInfo);
+    });
+  }
+  if (window.mascotAPI.getAppAwareness) {
+    try {
+      const initApp = await window.mascotAPI.getAppAwareness();
+      if (initApp) applyAppAwareness(initApp);
+    } catch (_e) {
+      // Ignore
+    }
+  }
 }
 
 /* ==========================================================================
@@ -1027,6 +1144,9 @@ function syncInteractiveWindowShape() {
     { el: dom.mascotSvg, pad: 28 },
     { el: dom.chargingBadge, pad: 12 },
     { el: dom.offlineBadge, pad: 10 },
+    { el: dom.appAwarenessBadge, pad: 10 },
+    { el: dom.idleZzz, pad: 8 },
+    { el: dom.speechBubble, pad: 10 },
     { el: dom.wellnessBubble, pad: 10 },
     { el: dom.timerBubble, pad: 10 },
     { el: dom.taskBubble, pad: 10 },
@@ -1160,7 +1280,15 @@ function handleGlobalCursorMove(payload) {
     }
   }
 
-  updateClickThrough(localX, localY);
+  // Play welcome-back dance if idle animations were active
+  playWelcomeBackDance();
+
+  // On Linux, keep the window always able to receive mouse events.
+  // The window is focusable:false and transparent, so it won't steal focus
+  // from other apps. The mascot needs to receive mouse events to be clickable
+  // (single-click for menu, double-click to drag). Skipping the toggle
+  // avoids race conditions where setIgnoreMouseEvents(true) is re-enabled
+  // right when the user clicks.
 
   if (eyesFollow) {
     updateEyesFromScreenOrLocal(payload);
@@ -1231,6 +1359,370 @@ function scheduleSpontaneousBehavior() {
   }, delayMs);
 }
 
+/* ==========================================================================
+   Idle Animations: Progressive stages (yawn → stretch → nap with Zzz)
+   ========================================================================== */
+
+/**
+ * Clears all idle animation CSS classes and resets state.
+ */
+function clearIdleAnimations() {
+  const mw = dom.mascotWrapper;
+  if (!mw) return;
+  mw.classList.remove('idle-yawning', 'idle-stretching', 'idle-napping', 'idle-dancing');
+  if (dom.idleZzz) dom.idleZzz.classList.add('hidden');
+  state.idleAnimStage = 'none';
+  state.idleAnimTriggered = { yawn: false, stretch: false, nap: false };
+}
+
+/**
+ * Triggers a single idle animation by adding/removing the CSS class.
+ */
+function triggerIdleAnimationStage(stage) {
+  if (state.idleAnimTriggered[stage]) return;
+  state.idleAnimTriggered[stage] = true;
+  state.idleAnimStage = stage;
+
+  const mw = dom.mascotWrapper;
+  if (!mw) return;
+
+  // Remove previous stage class
+  mw.classList.remove('idle-yawning', 'idle-stretching', 'idle-napping');
+
+  const className = {
+    yawn: 'idle-yawning',
+    stretch: 'idle-stretching',
+    nap: 'idle-napping',
+  }[stage];
+
+  if (className) {
+    mw.classList.add(className);
+  }
+
+  // Show Zzz bubbles only for nap stage
+  if (stage === 'nap' && dom.idleZzz) {
+    dom.idleZzz.classList.remove('hidden');
+  }
+
+  syncInteractiveWindowShape();
+}
+
+/**
+ * Evaluates idle duration and triggers the appropriate animation stage.
+ */
+function evaluateIdleAnimations() {
+  // Skip if disabled, sleeping, panel open, or timer alerting
+  if (!state.settings || !state.settings.idleAnimations) {
+    clearIdleAnimations();
+    return;
+  }
+  if (state.isSleepingFromIdle || state.isRingOpen || state.isPanelOpen || state.timer.status === 'alert') {
+    clearIdleAnimations();
+    return;
+  }
+
+  const idleDuration = Date.now() - state.lastCursorMoveAt;
+
+  if (idleDuration >= IDLE_ANIM_NAP_MS) {
+    triggerIdleAnimationStage('nap');
+  } else if (idleDuration >= IDLE_ANIM_STRETCH_MS) {
+    triggerIdleAnimationStage('stretch');
+  } else if (idleDuration >= IDLE_ANIM_YAWN_MS) {
+    triggerIdleAnimationStage('yawn');
+  } else {
+    clearIdleAnimations();
+  }
+}
+
+/**
+ * Plays a quick welcome-back dance when the user returns after idle animations.
+ */
+function playWelcomeBackDance() {
+  const wasIdle = state.idleAnimStage !== 'none';
+  clearIdleAnimations();
+  if (!wasIdle) return;
+
+  const mw = dom.mascotWrapper;
+  if (!mw) return;
+
+  mw.classList.add('idle-dancing');
+  triggerTemporaryExpression('happy', 2000, true);
+  spawnParticles(['✨', '💫', '♥'], 3);
+  setTimeout(() => mw.classList.remove('idle-dancing'), 3000);
+}
+
+/* ==========================================================================
+   Voice: Minion-like Speech Synthesis & Name-Call Response
+   ========================================================================== */
+
+// Minion-style responses — playful, high-energy phrases
+const MINION_RESPONSES = [
+  'Bello! I am good, sir! How may I help you? 🍌',
+  'Banana! What can I do for you, boss? 💛',
+  'Bwee! I am here! Tell me what you need! ✨',
+  'Poopaye to boredom! Let me help you! 🍌',
+  'Me ready to help! What is the plan, sir? 💛',
+  'Bee do bee do! I am listening, boss! 🎵',
+  'Tulaliloo! You called? I am here to help! ✨',
+  'Me feel good! What do you need, sir? 🍌',
+  'Hala bisbee! I am your minion, ready to serve! 💛',
+  'Bampotey! You need something? Ask me! 🍌',
+  'Kpiash! I am awake and ready, boss! ✨',
+  'Me love helping you! What is it, sir? 💛',
+  'Bwee bwee! You called Otto? I am here! 🍌',
+  'Baboi! Tell me what to do, master! ✨',
+  'Me happy you called! How can I help? 💛',
+];
+
+/**
+ * Speaks text using Web Speech API with Minion-like voice parameters.
+ * Shows a speech bubble with the text while speaking.
+ */
+function speakMinion(text) {
+  console.log('[VOICE] speakMinion called with:', text);
+
+  clearTimeout(state.speechBubbleTimer);
+
+  // Show speech bubble immediately
+  if (dom.speechBubbleText) {
+    dom.speechBubbleText.textContent = text;
+  }
+  if (dom.speechBubble) {
+    dom.speechBubble.classList.remove('hidden');
+  }
+
+  state.speaking = true;
+  triggerTemporaryExpression('surprised', 2000, true);
+  spawnParticles(['🍌', '💛', '✨'], 3);
+
+  // Try system TTS via main process (spd-say on Linux) — most reliable
+  if (window.mascotAPI.speakText) {
+    console.log('[VOICE] calling system TTS via IPC...');
+    window.mascotAPI.speakText(text, MINION_VOICE_PITCH, MINION_VOICE_RATE)
+      .then((result) => {
+        if (result && result.success) {
+          console.log('[VOICE] system TTS succeeded');
+        } else {
+          console.warn('[VOICE] system TTS failed, falling back to speechSynthesis');
+          fallbackSpeechSynthesis(text);
+        }
+      })
+      .catch((err) => {
+        console.warn('[VOICE] system TTS error, falling back to speechSynthesis:', err);
+        fallbackSpeechSynthesis(text);
+      });
+  } else {
+    console.warn('[VOICE] speakText IPC not available, using speechSynthesis');
+    fallbackSpeechSynthesis(text);
+  }
+
+  // Auto-hide speech bubble after 4 seconds max
+  state.speechBubbleTimer = setTimeout(() => {
+    console.log('[VOICE] auto-hiding speech bubble (timeout)');
+    hideSpeechBubble();
+  }, 4000);
+}
+
+/**
+ * Fallback: use Web Speech API if system TTS is unavailable.
+ */
+function fallbackSpeechSynthesis(text) {
+  if (!('speechSynthesis' in window)) {
+    console.warn('[VOICE] speechSynthesis not available either');
+    return;
+  }
+
+  console.log('[VOICE] using speechSynthesis fallback');
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.pitch = MINION_VOICE_PITCH;
+  utterance.rate = MINION_VOICE_RATE;
+  utterance.volume = MINION_VOICE_VOLUME;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) {
+    const englishVoice = voices.find(v => v.lang.startsWith('en') && v.localService);
+    const anyVoice = voices.find(v => v.localService);
+    utterance.voice = englishVoice || anyVoice || voices[0];
+    console.log('[VOICE] fallback voice:', utterance.voice.name, utterance.voice.lang);
+  }
+
+  utterance.onend = () => {
+    console.log('[VOICE] fallback speech ended');
+    hideSpeechBubble();
+  };
+  utterance.onerror = (e) => {
+    console.error('[VOICE] fallback speech error:', e);
+    hideSpeechBubble();
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+/**
+ * Hides the speech bubble and resets speaking state.
+ */
+function hideSpeechBubble() {
+  if (dom.speechBubble) {
+    dom.speechBubble.classList.add('hidden');
+  }
+  state.speaking = false;
+  clearTimeout(state.speechBubbleTimer);
+}
+
+/* ==========================================================================
+   Voice Activation: Python SpeechRecognition (Wake Word Detection)
+   ========================================================================== */
+
+/**
+ * Updates the voice activation status indicator in the settings panel.
+ */
+function updateVoiceActivationStatusUI(status) {
+  if (!dom.voiceActivationStatus) return;
+  const mascotName = (state.settings && state.settings.mascotName) || 'Otto';
+  
+  if (status && typeof status === 'object') {
+    // Status update from Python process
+    if (status.status === 'listening') {
+      dom.voiceActivationStatus.innerHTML = `<span>🎤 Listening for "Hey ${mascotName}"...</span>`;
+      if (dom.voiceListeningBadge) dom.voiceListeningBadge.classList.remove('hidden');
+    } else if (status.status === 'heard') {
+      dom.voiceActivationStatus.innerHTML = `<span>👂 Heard: "${status.text || '...'}"</span>`;
+      setTimeout(() => {
+        if (state.voiceActivationListening) {
+          dom.voiceActivationStatus.innerHTML = `<span>🎤 Listening for "Hey ${mascotName}"...</span>`;
+        }
+      }, 2000);
+    } else if (status.status === 'error') {
+      dom.voiceActivationStatus.innerHTML = `<span>⚠️ Error: ${status.message || 'Unknown'}</span>`;
+      stopVoiceActivationUI();
+    } else if (status.status === 'stopped') {
+      dom.voiceActivationStatus.innerHTML = `<span>⚠️ Voice recognition stopped</span>`;
+      stopVoiceActivationUI();
+    }
+  } else if (status === true) {
+    // Enabled but not yet listening
+    dom.voiceActivationStatus.innerHTML = `<span>🔘 Voice activation on (say "Hey ${mascotName}")</span>`;
+  } else {
+    // Disabled
+    dom.voiceActivationStatus.innerHTML = `<span>🔇 Voice activation off</span>`;
+  }
+}
+
+/**
+ * Updates UI when voice activation stops (badge, status).
+ */
+function stopVoiceActivationUI() {
+  state.voiceActivationListening = false;
+  if (dom.voiceListeningBadge) dom.voiceListeningBadge.classList.add('hidden');
+  const mascotName = (state.settings && state.settings.mascotName) || 'Otto';
+  if (state.settings && state.settings.voiceActivation) {
+    dom.voiceActivationStatus.innerHTML = `<span>🔘 Voice activation on (say "Hey ${mascotName}")</span>`;
+  } else {
+    updateVoiceActivationStatusUI(false);
+  }
+}
+
+/**
+ * Starts the Python voice activation process via IPC.
+ */
+function startVoiceListening() {
+  const mascotName = (state.settings && state.settings.mascotName) || 'Otto';
+  console.log('[VOICE-ACT] Starting Python voice activation for:', mascotName);
+  
+  if (window.mascotAPI.startVoiceActivation) {
+    window.mascotAPI.startVoiceActivation(mascotName).then((result) => {
+      if (result && result.success) {
+        state.voiceActivationListening = true;
+        console.log('[VOICE-ACT] Python process started successfully');
+      } else {
+        console.error('[VOICE-ACT] Failed to start Python process:', result);
+        updateVoiceActivationStatusUI(false);
+      }
+    }).catch((err) => {
+      console.error('[VOICE-ACT] Error starting Python process:', err);
+      updateVoiceActivationStatusUI(false);
+    });
+  } else {
+    console.error('[VOICE-ACT] startVoiceActivation API not available');
+    if (dom.voiceActivationStatus) {
+      dom.voiceActivationStatus.innerHTML = '<span>⚠️ Voice activation not available</span>';
+    }
+  }
+}
+
+/**
+ * Stops the Python voice activation process via IPC.
+ */
+function stopVoiceListening() {
+  console.log('[VOICE-ACT] Stopping Python voice activation');
+  if (window.mascotAPI.stopVoiceActivation) {
+    window.mascotAPI.stopVoiceActivation().then(() => {
+      stopVoiceActivationUI();
+    }).catch((err) => {
+      console.warn('[VOICE-ACT] Error stopping:', err);
+      stopVoiceActivationUI();
+    });
+  } else {
+    stopVoiceActivationUI();
+  }
+}
+
+/**
+ * Toggles voice activation on/off.
+ */
+function toggleVoiceActivation(enable) {
+  if (enable) {
+    startVoiceListening();
+  } else {
+    stopVoiceListening();
+    updateVoiceActivationStatusUI(false);
+  }
+}
+
+/**
+ * Handles the name-call response when user presses Alt+O.
+ * The mascot responds with a random Minion phrase.
+ */
+function handleNameCallResponse(payload) {
+  console.log('[VOICE] handleNameCallResponse called!', payload);
+  const name = (payload && payload.name) || 'Otto';
+  const voiceEnabled = payload && payload.voiceEnabled !== false;
+  console.log('[VOICE] name:', name, 'voiceEnabled:', voiceEnabled);
+
+  // Wake up if sleeping
+  if (state.isSleepingFromIdle) {
+    state.isSleepingFromIdle = false;
+    setDisplayedExpression('surprised');
+    resetEyeTargets();
+  }
+
+  // Clear idle animations
+  clearIdleAnimations();
+
+  // Pick a random response
+  const response = MINION_RESPONSES[Math.floor(Math.random() * MINION_RESPONSES.length)];
+  console.log('[VOICE] picked response:', response);
+
+  if (voiceEnabled) {
+    speakMinion(response);
+  } else {
+    // Show speech bubble without speaking
+    if (dom.speechBubbleText) {
+      dom.speechBubbleText.textContent = response;
+    }
+    if (dom.speechBubble) {
+      dom.speechBubble.classList.remove('hidden');
+    }
+    triggerTemporaryExpression('happy', 2000, true);
+    spawnParticles(['🍌', '💛', '✨'], 3);
+    state.speechBubbleTimer = setTimeout(() => {
+      hideSpeechBubble();
+    }, 2500);
+  }
+}
+
 function startIdleSleepAndWellnessMonitors() {
   setInterval(() => {
     const idleDuration = Date.now() - state.lastCursorMoveAt;
@@ -1243,6 +1735,9 @@ function startIdleSleepAndWellnessMonitors() {
       resetEyeTargets();
       setDisplayedExpression('sleepy');
     }
+
+    // Evaluate progressive idle animations
+    evaluateIdleAnimations();
     syncCircadianMood();
   }, 5000);
 
@@ -1329,32 +1824,92 @@ function playLandingSquishBounce() {
    9. Gooey Metaball Chain Menu, Detail Panel, Drag-to-Move & Drop Pocket
    ========================================================================== */
 
+let ringCloseTimer = null;
+let panelCloseTimer = null;
+
 function toggleRingMenu(forceState) {
   const next = typeof forceState === 'boolean' ? forceState : !state.isRingOpen;
   state.isRingOpen = next;
-  dom.radialRing.classList.toggle('hidden', !next);
 
-  if (next && state.peekEdge) {
-    applyPeekEdgeState(null);
-  }
-  if (!next) {
+  clearTimeout(ringCloseTimer);
+  ringCloseTimer = null;
+
+  if (next) {
+    dom.radialRing.classList.remove('closing', 'hidden');
+    if (state.peekEdge) {
+      applyPeekEdgeState(null);
+    }
+    syncInteractiveWindowShape();
+    requestAnimationFrame(syncInteractiveWindowShape);
+    setTimeout(syncInteractiveWindowShape, 260);
+  } else {
     closeDetailPanel();
+    dom.radialRing.classList.add('closing');
+    ringCloseTimer = setTimeout(() => {
+      ringCloseTimer = null;
+      if (!state.isRingOpen) {
+        dom.radialRing.classList.add('hidden');
+        dom.radialRing.classList.remove('closing');
+        syncInteractiveWindowShape();
+        requestAnimationFrame(syncInteractiveWindowShape);
+      }
+    }, 170);
   }
-  syncInteractiveWindowShape();
-  requestAnimationFrame(syncInteractiveWindowShape);
-  setTimeout(syncInteractiveWindowShape, 260);
 }
 
-function openDetailPanel(panelKey) {
-  if (state.isPanelOpen && state.activePanel === panelKey) {
+function applyPanelSearchFilter(query) {
+  const q = (query || '').trim().toLowerCase();
+  const rows = dom.popupMenu.querySelectorAll('.card-section-row');
+
+  if (!q) {
+    rows.forEach((r) => r.classList.remove('hidden'));
+    Object.entries(dom.tabPanels).forEach(([key, panel]) => {
+      if (panel) {
+        panel.classList.toggle('hidden', key !== state.activePanel);
+      }
+    });
+    return;
+  }
+
+  // When searching, show all panels that contain at least one matching row
+  Object.values(dom.tabPanels).forEach((panel) => {
+    if (!panel) return;
+    const panelRows = panel.querySelectorAll('.card-section-row');
+    let anyMatch = false;
+    panelRows.forEach((row) => {
+      const text = (row.textContent || '').toLowerCase();
+      const match = text.includes(q);
+      row.classList.toggle('hidden', !match);
+      if (match) anyMatch = true;
+    });
+    panel.classList.toggle('hidden', !anyMatch);
+  });
+
+  syncInteractiveWindowShape();
+}
+
+function openDetailPanel(panelKey, forceOpen = false) {
+  if (!forceOpen && state.isPanelOpen && state.activePanel === panelKey) {
     closeDetailPanel();
     return;
   }
 
+  clearTimeout(panelCloseTimer);
+  panelCloseTimer = null;
+
   state.activePanel = panelKey;
   state.isPanelOpen = true;
   dom.panelTitle.textContent = PANEL_TITLES[panelKey] || 'Mascot Menu';
-  dom.popupMenu.classList.remove('hidden');
+  if (dom.panelSubheaderAction) {
+    const actionLabel = PANEL_SUBHEADER_ACTIONS[panelKey] || '';
+    dom.panelSubheaderAction.textContent = actionLabel;
+    dom.panelSubheaderAction.classList.toggle('hidden', !actionLabel);
+  }
+  if (dom.panelSearchInput && dom.panelSearchInput.value) {
+    dom.panelSearchInput.value = '';
+    applyPanelSearchFilter('');
+  }
+  dom.popupMenu.classList.remove('closing', 'hidden');
 
   Object.entries(dom.tabPanels).forEach(([key, panel]) => {
     if (panel) {
@@ -1368,21 +1923,44 @@ function openDetailPanel(panelKey) {
     }
   });
 
+  if (dom.footerPills) {
+    dom.footerPills.forEach((pill) => {
+      pill.classList.toggle('active', pill.dataset.footerPanel === panelKey);
+    });
+  }
+
   syncInteractiveWindowShape();
   requestAnimationFrame(syncInteractiveWindowShape);
   setTimeout(syncInteractiveWindowShape, 260);
 }
 
 function closeDetailPanel() {
+  if (!state.isPanelOpen && dom.popupMenu.classList.contains('hidden')) {
+    return;
+  }
   state.isPanelOpen = false;
-  dom.popupMenu.classList.add('hidden');
+  if (dom.panelSearchInput && dom.panelSearchInput.value) {
+    dom.panelSearchInput.value = '';
+    applyPanelSearchFilter('');
+  }
   dom.ringButtons.forEach((btn) => {
     if (btn.dataset.ringPanel) {
       btn.classList.remove('active');
     }
   });
   window.mascotAPI.setFocusable(false);
-  syncInteractiveWindowShape();
+
+  clearTimeout(panelCloseTimer);
+  dom.popupMenu.classList.add('closing');
+  panelCloseTimer = setTimeout(() => {
+    panelCloseTimer = null;
+    if (!state.isPanelOpen) {
+      dom.popupMenu.classList.add('hidden');
+      dom.popupMenu.classList.remove('closing');
+      syncInteractiveWindowShape();
+      requestAnimationFrame(syncInteractiveWindowShape);
+    }
+  }, 160);
 }
 
 function setupMascotDragClickAndDropPocket() {
@@ -1412,22 +1990,42 @@ function setupMascotDragClickAndDropPocket() {
       acknowledgeTimerAlert();
     }
 
-    applyPeekEdgeState(null);
-    state.drag.active = true;
-    state.drag.moved = false;
-    state.drag.startScreenX = e.screenX;
-    state.drag.startScreenY = e.screenY;
-    state.drag.lastScreenX = e.screenX;
-    state.drag.lastScreenY = e.screenY;
-    if (window.mascotAPI.startDrag) {
-      window.mascotAPI.startDrag();
+    // Only start dragging on a double-click (2nd press)
+    if (e.detail >= 2) {
+      clearTimeout(state.drag.clickTimer);
+      state.drag.clickTimer = null;
+      applyPeekEdgeState(null);
+      state.drag.active = true;
+      state.drag.moved = false;
+      state.drag.startScreenX = e.screenX;
+      state.drag.startScreenY = e.screenY;
+      state.drag.lastScreenX = e.screenX;
+      state.drag.lastScreenY = e.screenY;
+      if (window.mascotAPI.startDrag) {
+        window.mascotAPI.startDrag();
+      }
+      syncInteractiveWindowShape();
+      return;
     }
-    syncInteractiveWindowShape();
+
+    // Single click: wait briefly so a double-click doesn't also toggle the menu
+    clearTimeout(state.drag.clickTimer);
+    state.drag.clickTimer = setTimeout(() => {
+      state.drag.clickTimer = null;
+      if (!state.drag.active) {
+        toggleRingMenu();
+      }
+    }, 210);
   });
 
   window.addEventListener('mousemove', (e) => {
     state.lastCursorMoveAt = Date.now();
-    updateClickThrough(e.clientX, e.clientY);
+    // On Linux, setIgnoreMouseEvents is always false so the mascot is
+    // always clickable. No need for updateClickThrough() which would
+    // re-enable click-through and break interaction.
+    if (process.platform !== 'linux') {
+      updateClickThrough(e.clientX, e.clientY);
+    }
     updateEyesFromScreenOrLocal({
       screenX: e.screenX,
       screenY: e.screenY,
@@ -1460,32 +2058,27 @@ function setupMascotDragClickAndDropPocket() {
 
   window.addEventListener('mouseup', async () => {
     if (!state.drag.active) return;
-    const wasMoved = state.drag.moved;
     state.drag.active = false;
     state.drag.moved = false;
 
-    if (wasMoved) {
-      if (window.mascotAPI.releaseDrag) {
-        const res = await window.mascotAPI.releaseDrag();
-        if (res) {
-          if (res.layout) {
-            applyMascotLayout(res.layout);
-          }
-          applyPeekEdgeState(res.peekEdge);
-          if (!res.falling && !res.peekEdge) {
-            playLandingSquishBounce();
-          }
+    if (window.mascotAPI.releaseDrag) {
+      const res = await window.mascotAPI.releaseDrag();
+      if (res) {
+        if (res.layout) {
+          applyMascotLayout(res.layout);
         }
-      } else {
-        playLandingSquishBounce();
-        const updated = await window.mascotAPI.saveWindowPosition();
-        state.settings = updated;
+        applyPeekEdgeState(res.peekEdge);
+        if (!res.falling && !res.peekEdge) {
+          playLandingSquishBounce();
+        }
       }
-      syncInteractiveWindowShape();
-      requestAnimationFrame(syncInteractiveWindowShape);
     } else {
-      toggleRingMenu();
+      playLandingSquishBounce();
+      const updated = await window.mascotAPI.saveWindowPosition();
+      state.settings = updated;
     }
+    syncInteractiveWindowShape();
+    requestAnimationFrame(syncInteractiveWindowShape);
   });
 
   // Drag-and-Drop Text / URLs / Treats onto Mascot
@@ -1574,8 +2167,58 @@ function setupMascotDragClickAndDropPocket() {
   });
 
   dom.panelCloseBtn.addEventListener('click', () => {
+    if (dom.panelSearchInput && dom.panelSearchInput.value.trim()) {
+      dom.panelSearchInput.value = '';
+      applyPanelSearchFilter('');
+      return;
+    }
     closeDetailPanel();
   });
+
+  if (dom.panelSearchInput) {
+    dom.panelSearchInput.addEventListener('input', () => {
+      applyPanelSearchFilter(dom.panelSearchInput.value);
+    });
+  }
+
+  if (dom.footerPills) {
+    dom.footerPills.forEach((pill) => {
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetPanel = pill.dataset.footerPanel;
+        if (targetPanel) {
+          openDetailPanel(targetPanel, true);
+        }
+      });
+    });
+  }
+
+  if (dom.panelSubheaderAction) {
+    dom.panelSubheaderAction.addEventListener('click', () => {
+      const active = state.activePanel;
+      if (active === 'task') {
+        updateSettings({ pocketItems: [], stickyTask: { text: '', done: false } });
+      } else if (active === 'timer') {
+        cancelTimer();
+        setAmbientAudioMode('off');
+        updateSettings({ ambientSound: 'off' });
+      } else if (active === 'shapes') {
+        updateSettings({ shape: 'ears', accessory: 'none', circadianMode: true });
+      } else if (active === 'expression') {
+        updateSettings({ expression: 'happy', autoExpressions: true });
+      } else if (active === 'customize') {
+        updateSettings({
+          size: 'medium',
+          colors: {
+            body: '#A695F5',
+            shade: '#8772E8',
+            customShade: false,
+            reactionColorShift: true,
+          },
+        });
+      }
+    });
+  }
 
   if (dom.settingsQuitBtn) {
     dom.settingsQuitBtn.addEventListener('click', () => {
@@ -2056,6 +2699,38 @@ function setupCustomizationAndFeatures() {
     updateSettings({ eyesFollowCursor: dom.eyesFollowToggle.checked });
   });
 
+  if (dom.appAwarenessToggle) {
+    dom.appAwarenessToggle.addEventListener('change', () => {
+      updateSettings({ appAwareness: dom.appAwarenessToggle.checked });
+    });
+  }
+
+  if (dom.idleAnimationsToggle) {
+    dom.idleAnimationsToggle.addEventListener('change', () => {
+      updateSettings({ idleAnimations: dom.idleAnimationsToggle.checked });
+    });
+  }
+
+  if (dom.mascotNameInput) {
+    dom.mascotNameInput.addEventListener('change', () => {
+      updateSettings({ mascotName: dom.mascotNameInput.value.trim() });
+    });
+  }
+
+  if (dom.voiceEnabledToggle) {
+    dom.voiceEnabledToggle.addEventListener('change', () => {
+      updateSettings({ voiceEnabled: dom.voiceEnabledToggle.checked });
+    });
+  }
+
+  if (dom.voiceActivationToggle) {
+    dom.voiceActivationToggle.addEventListener('change', () => {
+      const enable = dom.voiceActivationToggle.checked;
+      updateSettings({ voiceActivation: enable });
+      toggleVoiceActivation(enable);
+    });
+  }
+
   dom.startupToggle.addEventListener('change', () => {
     updateSettings({ launchAtStartup: dom.startupToggle.checked });
   });
@@ -2129,6 +2804,55 @@ async function init() {
 
   window.mascotAPI.onCursorMove(handleGlobalCursorMove);
   await initPowerAndAudioMonitoring();
+
+  // Subscribe to name-call voice response (triggered by global shortcut)
+  if (window.mascotAPI.onVoiceRespond) {
+    window.mascotAPI.onVoiceRespond(handleNameCallResponse);
+    console.log('[VOICE] IPC subscription for voice:respond registered');
+  }
+
+  // Subscribe to Python voice activation wake word detection
+  if (window.mascotAPI.onVoiceActivationDetected) {
+    window.mascotAPI.onVoiceActivationDetected((payload) => {
+      console.log('[VOICE-ACT] Wake word detected via Python:', payload);
+      handleNameCallResponse({
+        name: payload.name || 'Otto',
+        voiceEnabled: payload.voiceEnabled !== false,
+      });
+      // Restart listening after response
+      setTimeout(() => {
+        if (state.settings && state.settings.voiceActivation) {
+          startVoiceListening();
+        }
+      }, 5000);
+    });
+    console.log('[VOICE-ACT] IPC subscription for wake word detection registered');
+  }
+
+  // Subscribe to Python voice activation status updates
+  if (window.mascotAPI.onVoiceActivationStatus) {
+    window.mascotAPI.onVoiceActivationStatus((status) => {
+      console.log('[VOICE-ACT] Status update:', status);
+      updateVoiceActivationStatusUI(status);
+    });
+    console.log('[VOICE-ACT] IPC subscription for status updates registered');
+  }
+
+  // Start voice activation listening if enabled in settings
+  if (initialSettings && initialSettings.voiceActivation) {
+    console.log('[VOICE-ACT] Starting voice activation on init');
+    setTimeout(() => {
+      startVoiceListening();
+    }, 2000);
+  }
+
+  // Ensure voices are loaded for speech synthesis
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices();
+    };
+  }
 
   startEyeAnimationLoop();
   scheduleNextBlink();

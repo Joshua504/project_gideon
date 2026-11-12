@@ -39,6 +39,14 @@ contextBridge.exposeInMainWorld('mascotAPI', {
     return () => ipcRenderer.removeListener('system:telemetry', listener);
   },
 
+  // App Usage Awareness (detects focused app category)
+  getAppAwareness: () => ipcRenderer.invoke('app:get-awareness'),
+  onAppAwareness: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('app:awareness', listener);
+    return () => ipcRenderer.removeListener('app:awareness', listener);
+  },
+
   // Clipboard helpers for Pocket feature
   writeClipboard: (text) => ipcRenderer.invoke('clipboard:write', text),
   readClipboard: () => ipcRenderer.invoke('clipboard:read'),
@@ -67,4 +75,35 @@ contextBridge.exposeInMainWorld('mascotAPI', {
   // System notifications & lifecycle
   notifyTimerDone: (title, body) => ipcRenderer.send('timer:notify', { title, body }),
   quitApp: () => ipcRenderer.send('app:quit'),
+
+  // Voice / Name-call response (triggered by global shortcut Alt+O)
+  onVoiceRespond: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('voice:respond', listener);
+    return () => ipcRenderer.removeListener('voice:respond', listener);
+  },
+
+  // Speak text using system TTS (main process handles it)
+  speakText: (text, pitch, rate) => ipcRenderer.invoke('voice:speak', { text, pitch, rate }),
+
+  // Notify renderer of the registered shortcut key
+  onVoiceShortcutRegistered: (callback) => {
+    const listener = (_event, shortcut) => callback(shortcut);
+    ipcRenderer.on('voice:shortcut-registered', listener);
+    return () => ipcRenderer.removeListener('voice:shortcut-registered', listener);
+  },
+
+  // Voice Activation (Python SpeechRecognition)
+  startVoiceActivation: (mascotName) => ipcRenderer.invoke('voice:activation:start', { mascotName }),
+  stopVoiceActivation: () => ipcRenderer.invoke('voice:activation:stop'),
+  onVoiceActivationDetected: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('voice:activation:detected', listener);
+    return () => ipcRenderer.removeListener('voice:activation:detected', listener);
+  },
+  onVoiceActivationStatus: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('voice:activation:status', listener);
+    return () => ipcRenderer.removeListener('voice:activation:status', listener);
+  },
 });

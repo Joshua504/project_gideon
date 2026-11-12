@@ -24,7 +24,7 @@ const VALID_SHAPES = new Set([
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({
-  version: 6,
+  version: 11,
   windowPosition: null,
   mascotScreenPos: null,
   colors: {
@@ -40,11 +40,16 @@ const DEFAULT_SETTINGS = Object.freeze({
   size: 'medium',
   expression: 'happy',
   autoExpressions: true,
-  eyesFollowCursor: true,
+  eyesFollowCursor: false,
   strollMode: false,
   gravityMode: true,
   circadianMode: true,
   wellnessReminders: true,
+  appAwareness: true,
+  idleAnimations: true,
+  mascotName: 'Otto',
+  voiceEnabled: true,
+  voiceActivation: false,
   ambientSound: 'off',
   launchAtStartup: false,
   pomodoro: {
@@ -79,6 +84,9 @@ function mergeWithDefaults(partial = {}) {
   const mergedPocket = Array.isArray(partial.pocketItems)
     ? partial.pocketItems.filter((item) => typeof item === 'string').slice(0, 5)
     : DEFAULT_SETTINGS.pocketItems;
+  const mergedName = (typeof partial.mascotName === 'string' && partial.mascotName.trim().length > 0)
+    ? partial.mascotName.trim().slice(0, 30)
+    : DEFAULT_SETTINGS.mascotName;
   const isMigratingFromPreV6 = !partial.version || partial.version < 6;
 
   return {
@@ -87,6 +95,7 @@ function mergeWithDefaults(partial = {}) {
     version: DEFAULT_SETTINGS.version,
     circadianMode: isMigratingFromPreV6 ? true : Boolean(partial.circadianMode),
     shape: mergedShape,
+    mascotName: mergedName,
     pocketItems: mergedPocket,
     windowPosition:
       partial.windowPosition &&

@@ -11,312 +11,566 @@
   <div id="app-stage" class="stage">
     <!-- Floating Detail Panel (opens beside the Gooey Menu when a node is selected) -->
     <div id="popup-menu" class="popup-menu interactive hidden" role="dialog" aria-label="Mascot Controls">
+      <!-- Top Search / Header Row (matches reference image) -->
       <div class="panel-header">
-        <div class="panel-title-group">
+        <div class="panel-search-box">
+          <svg class="search-icon" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8" />
+            <line x1="12.6" y1="12.6" x2="17" y2="17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+          <input
+            id="panel-search-input"
+            class="panel-search-input focusable-input"
+            type="text"
+            placeholder="Focus, Shapes, Treats..."
+            autocomplete="off"
+          />
+        </div>
+        <button id="panel-close-btn" class="panel-close-btn" title="Close panel" aria-label="Close panel">
+          <svg viewBox="0 0 14 14" width="10" height="10" aria-hidden="true">
+            <path d="M2 2L12 12M12 2L2 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Inner Recessed White Card (matches reference image) -->
+      <div class="popup-inner-card">
+        <div class="card-subheader">
           <span id="panel-title" class="panel-title">Focus &amp; Breaks</span>
-          <span id="xp-streak-badge" class="xp-streak-badge" title="Focus Level &amp; Daily Streak">Lv.1 • 🔥1</span>
-        </div>
-        <button id="panel-close-btn" class="panel-close-btn" title="Close panel">✕</button>
-      </div>
-
-      <!-- XP Progress Bar -->
-      <div class="xp-bar-track" title="Earn XP from Pomodoro rounds, completing goals, feeding treats &amp; head-pats!">
-        <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
-      </div>
-
-      <!-- PANEL 1: Focus / Pomodoro / Alarm / Ambient Sound (Node: Circle Timer) -->
-      <section id="tab-timer" class="tab-panel active">
-        <div class="mode-pills">
-          <button class="mode-pill active" data-timer-mode="pomodoro">Pomodoro</button>
-          <button class="mode-pill" data-timer-mode="countdown">Timer</button>
-          <button class="mode-pill" data-timer-mode="alarm">Alarm</button>
-        </div>
-
-        <div class="timer-display-row">
-          <div>
-            <span id="menu-timer-readout" class="timer-readout">25:00</span>
-            <div id="menu-cycle-subtext" class="cycle-subtext">Focus • Round 1/4</div>
-          </div>
-          <span id="menu-timer-status" class="timer-status-badge">Ready</span>
-        </div>
-
-        <!-- Pomodoro Work / Break Settings -->
-        <div id="pomodoro-controls" class="sub-controls">
-          <div class="dual-field-row">
-            <label>
-              <span>Focus (m)</span>
-              <input id="pomo-focus-input" class="focusable-input" type="number" min="1" max="180" value="25" />
-            </label>
-            <label>
-              <span>Break (m)</span>
-              <input id="pomo-break-input" class="focusable-input" type="number" min="1" max="60" value="5" />
-            </label>
-          </div>
-          <div class="field-row compact">
-            <label for="pomo-autocycle-toggle">Auto-run breaks &amp; next round</label>
-            <input id="pomo-autocycle-toggle" type="checkbox" checked />
+          <div class="card-subheader-actions">
+            <span id="xp-streak-badge" class="xp-streak-badge" title="Focus Level &amp; Daily Streak">Lv.1 • 🔥1</span>
+            <button id="panel-subheader-action" class="subheader-link-btn hidden" type="button">Clear all</button>
           </div>
         </div>
 
-        <!-- Classic Countdown Settings -->
-        <div id="countdown-controls" class="sub-controls hidden">
-          <div class="preset-row">
-            <button class="chip-btn" data-minutes="5">5m</button>
-            <button class="chip-btn" data-minutes="10">10m</button>
-            <button class="chip-btn active" data-minutes="25">25m</button>
-            <button class="chip-btn" data-minutes="45">45m</button>
+        <!-- XP Progress Bar -->
+        <div class="xp-bar-track" title="Earn XP from Pomodoro rounds, completing goals, feeding treats &amp; head-pats!">
+          <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%;"></div>
+        </div>
+
+        <!-- PANEL 1: Focus / Pomodoro / Alarm / Ambient Sound (Node: Circle Timer) -->
+        <section id="tab-timer" class="tab-panel active">
+          <!-- Row 1: Mode & Timer Readout -->
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-purple" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="18" rx="4" fill="rgba(255,255,255,0.72)" />
+                  <rect x="15" y="9.5" width="8.5" height="3" rx="1.5" fill="#9333EA" opacity="0.75" />
+                  <rect x="6" y="14" width="12" height="11" rx="2.5" fill="rgba(255,255,255,0.92)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title-line">
+                  <span id="menu-timer-readout" class="timer-readout">25:00</span>
+                  <span id="menu-timer-status" class="timer-status-badge">Ready</span>
+                </div>
+                <div id="menu-cycle-subtext" class="row-subtitle cycle-subtext">Focus • Round 1/4</div>
+              </div>
+            </div>
+
+            <div class="mode-pills">
+              <button class="mode-pill active" data-timer-mode="pomodoro">Pomodoro</button>
+              <button class="mode-pill" data-timer-mode="countdown">Timer</button>
+              <button class="mode-pill" data-timer-mode="alarm">Alarm</button>
+            </div>
+
+            <!-- Pomodoro Work / Break Settings -->
+            <div id="pomodoro-controls" class="sub-controls">
+              <div class="dual-field-row">
+                <label>
+                  <span>Focus (m)</span>
+                  <input id="pomo-focus-input" class="focusable-input" type="number" min="1" max="180" value="25" />
+                </label>
+                <label>
+                  <span>Break (m)</span>
+                  <input id="pomo-break-input" class="focusable-input" type="number" min="1" max="60" value="5" />
+                </label>
+              </div>
+              <div class="field-row compact">
+                <label for="pomo-autocycle-toggle">Auto-run breaks &amp; next round</label>
+                <input id="pomo-autocycle-toggle" type="checkbox" checked />
+              </div>
+            </div>
+
+            <!-- Classic Countdown Settings -->
+            <div id="countdown-controls" class="sub-controls hidden">
+              <div class="preset-row">
+                <button class="chip-btn" data-minutes="5">5m</button>
+                <button class="chip-btn" data-minutes="10">10m</button>
+                <button class="chip-btn active" data-minutes="25">25m</button>
+                <button class="chip-btn" data-minutes="45">45m</button>
+              </div>
+              <div class="custom-minutes-row">
+                <label for="custom-minutes-input">Custom (min)</label>
+                <input
+                  id="custom-minutes-input"
+                  class="focusable-input"
+                  type="number"
+                  min="1"
+                  max="240"
+                  value="25"
+                />
+              </div>
+            </div>
+
+            <!-- Daily Alarm Settings -->
+            <div id="alarm-controls" class="sub-controls hidden">
+              <div class="field-row">
+                <label for="alarm-time-input">Alarm time</label>
+                <input id="alarm-time-input" class="focusable-input time-input" type="time" value="17:00" />
+              </div>
+              <div class="field-row">
+                <input
+                  id="alarm-label-input"
+                  class="focusable-input text-input"
+                  type="text"
+                  maxlength="40"
+                  placeholder="Alarm reminder note..."
+                />
+              </div>
+            </div>
+
+            <div class="timer-actions">
+              <button id="timer-start-btn" class="action-btn primary">Start</button>
+              <button id="timer-pause-btn" class="action-btn hidden">Pause</button>
+              <button id="timer-resume-btn" class="action-btn primary hidden">Resume</button>
+              <button id="timer-skip-btn" class="action-btn hidden" title="Skip to next phase">Skip</button>
+              <button id="timer-cancel-btn" class="action-btn subtle hidden">Reset</button>
+            </div>
           </div>
-          <div class="custom-minutes-row">
-            <label for="custom-minutes-input">Custom (min)</label>
+
+          <!-- Row 2: Ambient Soundscapes -->
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-blue" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="5" y="6" width="22" height="20" rx="4" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="9.5" cy="9.5" r="1.2" fill="#1D4ED8" />
+                  <circle cx="13" cy="9.5" r="1.2" fill="#2563EB" />
+                  <circle cx="16.5" cy="9.5" r="1.2" fill="#60A5FA" />
+                  <rect x="8" y="13" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.9)" />
+                  <rect x="8" y="19" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.75)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Ambient Focus Audio</div>
+                <div class="row-subtitle">Lo-Fi chords, rain &amp; brown noise.</div>
+              </div>
+            </div>
+            <div class="preset-row">
+              <button class="chip-btn ambient-btn active" data-ambient="off">Off</button>
+              <button class="chip-btn ambient-btn" data-ambient="lofi">🎹 Lo-Fi</button>
+              <button class="chip-btn ambient-btn" data-ambient="rain">🌧️ Rain</button>
+              <button class="chip-btn ambient-btn" data-ambient="brown">🌊 Noise</button>
+            </div>
+          </div>
+
+          <!-- Row 3: Wellness & Chime Preferences -->
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-green" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.88)" />
+                  <circle cx="10.2" cy="10.75" r="2.6" fill="#22C55E" />
+                  <rect x="6" y="17.5" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="21.8" cy="21.25" r="2.6" fill="#FFFFFF" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Wellness &amp; Alerts</div>
+                <div class="row-subtitle">Hydration nudges, posture &amp; chime.</div>
+              </div>
+            </div>
+            <div class="field-row compact">
+              <label for="wellness-toggle">Hydration &amp; posture nudges</label>
+              <div class="slider-wrap">
+                <button id="wellness-test-btn" class="chip-btn" title="Show a wellness reminder bubble now">Nudge</button>
+                <input id="wellness-toggle" type="checkbox" checked />
+              </div>
+            </div>
+            <div class="field-row compact">
+              <label for="sound-chime-toggle">Sound chime on finish</label>
+              <input id="sound-chime-toggle" type="checkbox" checked />
+            </div>
+          </div>
+        </section>
+
+        <!-- PANEL 2: 12 Character Shapes, Hats & Circadian Mode (Node: ★ Star) -->
+        <section id="tab-shapes" class="tab-panel hidden">
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-purple" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="18" rx="4" fill="rgba(255,255,255,0.72)" />
+                  <rect x="15" y="9.5" width="8.5" height="3" rx="1.5" fill="#9333EA" opacity="0.75" />
+                  <rect x="6" y="14" width="12" height="11" rx="2.5" fill="rgba(255,255,255,0.92)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Browse Character Shapes</div>
+                <div class="row-subtitle">12 silhouettes, ears, jelly, stack.</div>
+              </div>
+            </div>
+            <div class="shape-grid-12">
+              <button class="shape-btn active" data-shape="ears">Ears</button>
+              <button class="shape-btn" data-shape="clover">Clover</button>
+              <button class="shape-btn" data-shape="splat">Splat</button>
+              <button class="shape-btn" data-shape="snowman">Stack</button>
+              <button class="shape-btn" data-shape="jelly">Jelly</button>
+              <button class="shape-btn" data-shape="pillow">Pillow</button>
+              <button class="shape-btn" data-shape="kite">Kite</button>
+              <button class="shape-btn" data-shape="topknot">Bun</button>
+              <button class="shape-btn" data-shape="ufo">Cap</button>
+              <button class="shape-btn" data-shape="hourglass">Anvil</button>
+              <button class="shape-btn" data-shape="sub">Sub</button>
+              <button class="shape-btn" data-shape="cookie">Coin</button>
+            </div>
+          </div>
+
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-blue" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="5" y="6" width="22" height="20" rx="4" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="9.5" cy="9.5" r="1.2" fill="#1D4ED8" />
+                  <circle cx="13" cy="9.5" r="1.2" fill="#2563EB" />
+                  <circle cx="16.5" cy="9.5" r="1.2" fill="#60A5FA" />
+                  <rect x="8" y="13" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.9)" />
+                  <rect x="8" y="19" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.75)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Head Props &amp; Eyewear</div>
+                <div class="row-subtitle">Crowns, shades, headphones &amp; hats.</div>
+              </div>
+            </div>
+            <div class="accessory-grid">
+              <button class="acc-btn active" data-accessory="none">None</button>
+              <button class="acc-btn" data-accessory="sprout">🌱 Leaf</button>
+              <button class="acc-btn" data-accessory="crown">👑 Crown</button>
+              <button class="acc-btn" data-accessory="party">🎉 Party</button>
+              <button class="acc-btn" data-accessory="headphones">🎧 Audio</button>
+              <button class="acc-btn" data-accessory="sunglasses">🕶️ Shades</button>
+              <button class="acc-btn" data-accessory="nightcap">🌙 Nightcap</button>
+            </div>
+          </div>
+
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-green" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.88)" />
+                  <circle cx="10.2" cy="10.75" r="2.6" fill="#22C55E" />
+                  <rect x="6" y="17.5" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="21.8" cy="21.25" r="2.6" fill="#FFFFFF" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Circadian Schedule</div>
+                <div class="row-subtitle">Daytime shades &amp; late-night cap.</div>
+              </div>
+              <input id="circadian-toggle" type="checkbox" checked />
+            </div>
+          </div>
+        </section>
+
+        <!-- PANEL 3: Mood, Reaction Colors & Treats (Node: ✌ Peace Hand) -->
+        <section id="tab-expression" class="tab-panel hidden">
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-purple" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="18" rx="4" fill="rgba(255,255,255,0.72)" />
+                  <rect x="15" y="9.5" width="8.5" height="3" rx="1.5" fill="#9333EA" opacity="0.75" />
+                  <rect x="6" y="14" width="12" height="11" rx="2.5" fill="rgba(255,255,255,0.92)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Feed &amp; Hydrate Treats</div>
+                <div class="row-subtitle">Click or drag onto mascot (+10 XP).</div>
+              </div>
+            </div>
+            <div class="treat-row">
+              <button class="treat-btn" draggable="true" data-treat="boba" title="Click or drag Boba Tea onto mascot">🧋 Boba</button>
+              <button class="treat-btn" draggable="true" data-treat="cookie" title="Click or drag Cookie onto mascot">🍪 Cookie</button>
+              <button class="treat-btn" draggable="true" data-treat="coffee" title="Click or drag Espresso onto mascot">☕ Coffee</button>
+            </div>
+          </div>
+
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-blue" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="5" y="6" width="22" height="20" rx="4" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="9.5" cy="9.5" r="1.2" fill="#1D4ED8" />
+                  <circle cx="13" cy="9.5" r="1.2" fill="#2563EB" />
+                  <circle cx="16.5" cy="9.5" r="1.2" fill="#60A5FA" />
+                  <rect x="8" y="13" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.9)" />
+                  <rect x="8" y="19" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.75)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Expressions &amp; Moods</div>
+                <div class="row-subtitle">Facial rigs, winks &amp; pastel shifts.</div>
+              </div>
+            </div>
+            <div class="expression-grid">
+              <button class="expr-btn active" data-expr="happy">💜 Happy</button>
+              <button class="expr-btn" data-expr="wink">💚 Wink</button>
+              <button class="expr-btn" data-expr="sleepy">💙 Sleepy</button>
+              <button class="expr-btn" data-expr="surprised">🧡 Surprised</button>
+              <button class="expr-btn" data-expr="dizzy">💛 Dizzy</button>
+              <button class="expr-btn" data-expr="angry">🩷 Fierce</button>
+              <button class="expr-btn" data-expr="sad">🍑 Pout</button>
+            </div>
+          </div>
+
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-green" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.88)" />
+                  <circle cx="10.2" cy="10.75" r="2.6" fill="#22C55E" />
+                  <rect x="6" y="17.5" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="21.8" cy="21.25" r="2.6" fill="#FFFFFF" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Spontaneous Reactions</div>
+                <div class="row-subtitle">Auto moods, hops &amp; color shifts.</div>
+              </div>
+              <input id="auto-expr-toggle" type="checkbox" checked />
+            </div>
+          </div>
+        </section>
+
+        <!-- PANEL 4: Sticky Task & Clipboard / Drag-and-Drop Pocket (Node: ✎ Pencil) -->
+        <section id="tab-task" class="tab-panel hidden">
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-purple" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="18" rx="4" fill="rgba(255,255,255,0.72)" />
+                  <rect x="15" y="9.5" width="8.5" height="3" rx="1.5" fill="#9333EA" opacity="0.75" />
+                  <rect x="6" y="14" width="12" height="11" rx="2.5" fill="rgba(255,255,255,0.92)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Current Focus Goal</div>
+                <div class="row-subtitle">Pin a task bubble above mascot (+25 XP).</div>
+              </div>
+            </div>
             <input
-              id="custom-minutes-input"
-              class="focusable-input"
-              type="number"
-              min="1"
-              max="240"
-              value="25"
-            />
-          </div>
-        </div>
-
-        <!-- Daily Alarm Settings -->
-        <div id="alarm-controls" class="sub-controls hidden">
-          <div class="field-row">
-            <label for="alarm-time-input">Alarm time</label>
-            <input id="alarm-time-input" class="focusable-input time-input" type="time" value="17:00" />
-          </div>
-          <div class="field-row">
-            <input
-              id="alarm-label-input"
+              id="sticky-task-input"
               class="focusable-input text-input"
               type="text"
-              maxlength="40"
-              placeholder="Alarm reminder note..."
+              maxlength="50"
+              placeholder="e.g. Ship landing page..."
             />
+            <div class="timer-actions">
+              <button id="task-complete-btn" class="action-btn primary">✓ Complete</button>
+              <button id="task-clear-btn" class="action-btn subtle">Clear</button>
+            </div>
           </div>
-        </div>
 
-        <!-- Ambient Lo-Fi / Rain / Brown Noise Generator -->
-        <div class="field-group">
-          <span class="field-label">🎧 Ambient Focus Audio (♫ Button)</span>
-          <div class="preset-row">
-            <button class="chip-btn ambient-btn active" data-ambient="off">Off</button>
-            <button class="chip-btn ambient-btn" data-ambient="lofi">🎹 Lo-Fi</button>
-            <button class="chip-btn ambient-btn" data-ambient="rain">🌧️ Rain</button>
-            <button class="chip-btn ambient-btn" data-ambient="brown">🌊 Noise</button>
+          <!-- Clipboard / Drag-and-Drop Pocket -->
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-blue" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="5" y="6" width="22" height="20" rx="4" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="9.5" cy="9.5" r="1.2" fill="#1D4ED8" />
+                  <circle cx="13" cy="9.5" r="1.2" fill="#2563EB" />
+                  <circle cx="16.5" cy="9.5" r="1.2" fill="#60A5FA" />
+                  <rect x="8" y="13" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.9)" />
+                  <rect x="8" y="19" width="16" height="4.5" rx="1.5" fill="rgba(255,255,255,0.75)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Mascot Clipboard Pocket</div>
+                <div class="row-subtitle">Drop snippets on mascot or paste.</div>
+              </div>
+              <button id="pocket-paste-btn" class="chip-btn" title="Save current clipboard text into pocket">+ Paste</button>
+            </div>
+            <div id="pocket-list" class="pocket-list"></div>
           </div>
-        </div>
+        </section>
 
-        <div class="field-row compact">
-          <label for="wellness-toggle">💧 Hydration &amp; posture nudges</label>
-          <div class="slider-wrap">
-            <button id="wellness-test-btn" class="chip-btn" title="Show a wellness reminder bubble now">Nudge</button>
-            <input id="wellness-toggle" type="checkbox" checked />
+        <!-- PANEL 5: Settings, Physics, Colors & Quit (Node: ⚙ Gear) -->
+        <section id="tab-customize" class="tab-panel hidden">
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-purple" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="18" rx="4" fill="rgba(255,255,255,0.72)" />
+                  <rect x="15" y="9.5" width="8.5" height="3" rx="1.5" fill="#9333EA" opacity="0.75" />
+                  <rect x="6" y="14" width="12" height="11" rx="2.5" fill="rgba(255,255,255,0.92)" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Palette &amp; Appearance</div>
+                <div class="row-subtitle">Pastel swatches, custom colors &amp; size.</div>
+              </div>
+            </div>
+            <div class="palette-row">
+              <button
+                class="palette-swatch"
+                data-body="#A695F5"
+                data-shade="#8772E8"
+                title="Lavender Purple"
+                style="--swatch-color: #A695F5; --swatch-border: #8772E8;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#FA9B78"
+                data-shade="#E27A54"
+                title="Coral Peach"
+                style="--swatch-color: #FA9B78; --swatch-border: #E27A54;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#79DF8E"
+                data-shade="#54C46B"
+                title="Mint Green"
+                style="--swatch-color: #79DF8E; --swatch-border: #54C46B;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#FA969A"
+                data-shade="#E07176"
+                title="Soft Rose"
+                style="--swatch-color: #FA969A; --swatch-border: #E07176;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#86C5FF"
+                data-shade="#5AA8F0"
+                title="Sky Blue"
+                style="--swatch-color: #86C5FF; --swatch-border: #5AA8F0;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#FCA862"
+                data-shade="#E5893C"
+                title="Warm Apricot"
+                style="--swatch-color: #FCA862; --swatch-border: #E5893C;"
+              ></button>
+              <button
+                class="palette-swatch"
+                data-body="#F5CA7B"
+                data-shade="#DDA94E"
+                title="Butter Yellow"
+                style="--swatch-color: #F5CA7B; --swatch-border: #DDA94E;"
+              ></button>
+            </div>
+            <div class="field-row compact">
+              <label for="body-color-picker">Custom color</label>
+              <input id="body-color-picker" type="color" value="#A695F5" />
+              <label class="checkbox-label">
+                <input id="custom-shade-toggle" type="checkbox" />
+                <span>Shade</span>
+              </label>
+              <input id="shade-color-picker" type="color" value="#8772E8" disabled />
+            </div>
+            <div class="field-row compact">
+              <label for="size-slider">Size</label>
+              <div class="slider-wrap">
+                <input id="size-slider" type="range" min="0" max="2" step="1" value="1" />
+                <span id="size-label" class="size-tag">Medium</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div class="field-row compact">
-          <label for="sound-chime-toggle">🔔 Sound chime on finish</label>
-          <input id="sound-chime-toggle" type="checkbox" checked />
-        </div>
-
-        <div class="timer-actions">
-          <button id="timer-start-btn" class="action-btn primary">Start</button>
-          <button id="timer-pause-btn" class="action-btn hidden">Pause</button>
-          <button id="timer-resume-btn" class="action-btn primary hidden">Resume</button>
-          <button id="timer-skip-btn" class="action-btn hidden" title="Skip to next phase">Skip</button>
-          <button id="timer-cancel-btn" class="action-btn subtle hidden">Reset</button>
-        </div>
-      </section>
-
-      <!-- PANEL 2: 12 Character Shapes, Hats & Circadian Mode (Node: ★ Star) -->
-      <section id="tab-shapes" class="tab-panel hidden">
-        <div class="field-group">
-          <span class="field-label">Character Shape (12 Styles)</span>
-          <div class="shape-grid-12">
-            <button class="shape-btn active" data-shape="ears">Ears</button>
-            <button class="shape-btn" data-shape="clover">Clover</button>
-            <button class="shape-btn" data-shape="splat">Splat</button>
-            <button class="shape-btn" data-shape="snowman">Stack</button>
-            <button class="shape-btn" data-shape="jelly">Jelly</button>
-            <button class="shape-btn" data-shape="pillow">Pillow</button>
-            <button class="shape-btn" data-shape="kite">Kite</button>
-            <button class="shape-btn" data-shape="topknot">Bun</button>
-            <button class="shape-btn" data-shape="ufo">Cap</button>
-            <button class="shape-btn" data-shape="hourglass">Anvil</button>
-            <button class="shape-btn" data-shape="sub">Sub</button>
-            <button class="shape-btn" data-shape="cookie">Coin</button>
+          <div class="card-section-row">
+            <div class="row-head">
+              <div class="app-squircle squircle-green" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="32" height="32">
+                  <rect x="6" y="7" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.88)" />
+                  <circle cx="10.2" cy="10.75" r="2.6" fill="#22C55E" />
+                  <rect x="6" y="17.5" width="20" height="7.5" rx="3.75" fill="rgba(255,255,255,0.68)" />
+                  <circle cx="21.8" cy="21.25" r="2.6" fill="#FFFFFF" />
+                </svg>
+              </div>
+              <div class="row-copy">
+                <div class="row-title">Settings &amp; Preferences</div>
+                <div class="row-subtitle">Physics, eye tracking &amp; startup.</div>
+              </div>
+            </div>
+            <div class="field-row compact">
+              <label for="reaction-color-toggle">Shift color with reaction</label>
+              <input id="reaction-color-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row compact">
+              <label for="gravity-toggle">Gravity fall &amp; edge peek-a-boo</label>
+              <input id="gravity-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row compact">
+              <label for="eyes-follow-toggle">Eyes follow cursor</label>
+              <input id="eyes-follow-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row compact">
+              <label for="app-awareness-toggle">App usage awareness</label>
+              <input id="app-awareness-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row compact">
+              <label for="idle-animations-toggle">Idle animations</label>
+              <input id="idle-animations-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row">
+              <label for="mascot-name-input">Mascot name</label>
+              <input
+                id="mascot-name-input"
+                class="focusable-input"
+                type="text"
+                placeholder="Otto"
+                maxlength="30"
+                style="max-width: 160px;"
+              />
+            </div>
+            <div class="field-row compact">
+              <label for="voice-enabled-toggle">Minion voice</label>
+              <input id="voice-enabled-toggle" type="checkbox" checked />
+            </div>
+            <div class="field-row compact">
+              <label for="voice-activation-toggle">Voice activation ("Hey Otto")</label>
+              <input id="voice-activation-toggle" type="checkbox" />
+            </div>
+            <div id="voice-activation-status" class="field-row compact" style="opacity:0.6; font-size:11px; margin-top:-4px;">
+              <span>🔇 Voice activation off</span>
+            </div>
+            <div class="field-row compact">
+              <label for="startup-toggle">Launch at startup</label>
+              <input id="startup-toggle" type="checkbox" />
+            </div>
+            <button id="settings-quit-btn" class="action-btn quit-full-btn">Quit Mascot Companion</button>
           </div>
-        </div>
+        </section>
+      </div>
 
-        <div class="field-group">
-          <span class="field-label">Head Accessory &amp; Eyewear</span>
-          <div class="accessory-grid">
-            <button class="acc-btn active" data-accessory="none">None</button>
-            <button class="acc-btn" data-accessory="sprout">🌱 Leaf</button>
-            <button class="acc-btn" data-accessory="crown">👑 Crown</button>
-            <button class="acc-btn" data-accessory="party">🎉 Party</button>
-            <button class="acc-btn" data-accessory="headphones">🎧 Audio</button>
-            <button class="acc-btn" data-accessory="sunglasses">🕶️ Shades</button>
-            <button class="acc-btn" data-accessory="nightcap">🌙 Nightcap</button>
-          </div>
-        </div>
-
-        <div class="field-row compact highlight-row">
-          <label for="circadian-toggle">☀️ Time-of-day circadian props</label>
-          <input id="circadian-toggle" type="checkbox" checked />
-        </div>
-      </section>
-
-      <!-- PANEL 3: Mood, Reaction Colors & Treats (Node: ✌ Peace Hand) -->
-      <section id="tab-expression" class="tab-panel hidden">
-        <div class="field-group">
-          <span class="field-label">Feed &amp; Hydrate Treats (Click or Drag onto Mascot • +10 XP)</span>
-          <div class="treat-row">
-            <button class="treat-btn" draggable="true" data-treat="boba" title="Click or drag Boba Tea onto mascot">🧋 Boba</button>
-            <button class="treat-btn" draggable="true" data-treat="cookie" title="Click or drag Cookie onto mascot">🍪 Cookie</button>
-            <button class="treat-btn" draggable="true" data-treat="coffee" title="Click or drag Espresso onto mascot">☕ Coffee</button>
-          </div>
-        </div>
-
-        <div class="field-row compact highlight-row">
-          <label for="auto-expr-toggle">✨ Spontaneous moods &amp; colors</label>
-          <input id="auto-expr-toggle" type="checkbox" checked />
-        </div>
-
-        <div class="expression-grid">
-          <button class="expr-btn active" data-expr="happy">💜 Happy</button>
-          <button class="expr-btn" data-expr="wink">💚 Wink</button>
-          <button class="expr-btn" data-expr="sleepy">💙 Sleepy</button>
-          <button class="expr-btn" data-expr="surprised">🧡 Surprised</button>
-          <button class="expr-btn" data-expr="dizzy">💛 Dizzy</button>
-          <button class="expr-btn" data-expr="angry">🩷 Fierce</button>
-          <button class="expr-btn" data-expr="sad">🍑 Pout</button>
-        </div>
-      </section>
-
-      <!-- PANEL 4: Sticky Task & Clipboard / Drag-and-Drop Pocket (Node: ✎ Pencil) -->
-      <section id="tab-task" class="tab-panel hidden">
-        <span class="field-label">Current Focus Goal (+25 XP)</span>
-        <input
-          id="sticky-task-input"
-          class="focusable-input text-input"
-          type="text"
-          maxlength="50"
-          placeholder="e.g. Ship landing page..."
-        />
-        <div class="timer-actions">
-          <button id="task-complete-btn" class="action-btn primary">✓ Complete</button>
-          <button id="task-clear-btn" class="action-btn subtle">Clear</button>
-        </div>
-
-        <!-- Clipboard / Drag-and-Drop Pocket -->
-        <div class="pocket-section">
-          <div class="pocket-header-row">
-            <span class="field-label">📥 Mascot Pocket (Drop text on mascot)</span>
-            <button id="pocket-paste-btn" class="chip-btn" title="Save current clipboard text into pocket">+ Paste</button>
-          </div>
-          <div id="pocket-list" class="pocket-list"></div>
-        </div>
-      </section>
-
-      <!-- PANEL 5: Settings, Physics, Colors & Quit (Node: ⚙ Gear) -->
-      <section id="tab-customize" class="tab-panel hidden">
-        <div class="field-group">
-          <span class="field-label">Pastel Palette</span>
-          <div class="palette-row">
-            <button
-              class="palette-swatch"
-              data-body="#A695F5"
-              data-shade="#8772E8"
-              title="Lavender Purple"
-              style="--swatch-color: #A695F5; --swatch-border: #8772E8;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#FA9B78"
-              data-shade="#E27A54"
-              title="Coral Peach"
-              style="--swatch-color: #FA9B78; --swatch-border: #E27A54;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#79DF8E"
-              data-shade="#54C46B"
-              title="Mint Green"
-              style="--swatch-color: #79DF8E; --swatch-border: #54C46B;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#FA969A"
-              data-shade="#E07176"
-              title="Soft Rose"
-              style="--swatch-color: #FA969A; --swatch-border: #E07176;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#86C5FF"
-              data-shade="#5AA8F0"
-              title="Sky Blue"
-              style="--swatch-color: #86C5FF; --swatch-border: #5AA8F0;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#FCA862"
-              data-shade="#E5893C"
-              title="Warm Apricot"
-              style="--swatch-color: #FCA862; --swatch-border: #E5893C;"
-            ></button>
-            <button
-              class="palette-swatch"
-              data-body="#F5CA7B"
-              data-shade="#DDA94E"
-              title="Butter Yellow"
-              style="--swatch-color: #F5CA7B; --swatch-border: #DDA94E;"
-            ></button>
-          </div>
-        </div>
-
-        <div class="field-row compact">
-          <label for="reaction-color-toggle">🎨 Shift color with reaction</label>
-          <input id="reaction-color-toggle" type="checkbox" checked />
-        </div>
-
-        <div class="field-row compact">
-          <label for="body-color-picker">Custom color</label>
-          <input id="body-color-picker" type="color" value="#A695F5" />
-          <label class="checkbox-label">
-            <input id="custom-shade-toggle" type="checkbox" />
-            <span>Shade</span>
-          </label>
-          <input id="shade-color-picker" type="color" value="#8772E8" disabled />
-        </div>
-
-        <div class="field-row compact">
-          <label for="size-slider">Size</label>
-          <div class="slider-wrap">
-            <input id="size-slider" type="range" min="0" max="2" step="1" value="1" />
-            <span id="size-label" class="size-tag">Medium</span>
-          </div>
-        </div>
-
-        <div class="field-row compact">
-          <label for="gravity-toggle">🍎 Gravity fall &amp; edge peek-a-boo</label>
-          <input id="gravity-toggle" type="checkbox" checked />
-        </div>
-
-        <div class="field-row compact">
-          <label for="eyes-follow-toggle">👀 Eyes follow cursor</label>
-          <input id="eyes-follow-toggle" type="checkbox" checked />
-        </div>
-
-        <div class="field-row compact">
-          <label for="startup-toggle">🚀 Launch at startup</label>
-          <input id="startup-toggle" type="checkbox" />
-        </div>
-
-        <button id="settings-quit-btn" class="action-btn quit-full-btn">Quit Mascot Companion</button>
-      </section>
+      <!-- Bottom Pastel Category Pills Dock (matches reference image) -->
+      <div class="popup-footer-pills" role="tablist" aria-label="Submenu Categories">
+        <button class="footer-pill pill-orange active" data-footer-panel="timer" type="button">
+          <span class="pill-badge">5</span>
+          <span class="pill-text">Focus</span>
+        </button>
+        <button class="footer-pill pill-yellow" data-footer-panel="shapes" type="button">
+          <span class="pill-badge">★</span>
+          <span class="pill-text">Shapes</span>
+        </button>
+        <button class="footer-pill pill-purple" data-footer-panel="expression" type="button">
+          <span class="pill-badge">✌</span>
+          <span class="pill-text">Moods</span>
+        </button>
+        <button class="footer-pill pill-green" data-footer-panel="task" type="button">
+          <span class="pill-badge">✎</span>
+          <span class="pill-text">Pocket</span>
+        </button>
+        <button class="footer-pill pill-blue" data-footer-panel="customize" type="button">
+          <span class="pill-badge">⚙</span>
+          <span class="pill-text">Setup</span>
+        </button>
+      </div>
     </div>
 
     <!-- Mascot Dock Area -->
@@ -325,6 +579,11 @@
       <div class="floating-badges">
         <div id="offline-badge" class="offline-badge interactive hidden" title="No Wi-Fi / Offline connection detected">
           <span>☁️? Offline</span>
+        </div>
+
+        <div id="app-awareness-badge" class="app-awareness-badge interactive hidden" title="Currently focused app">
+          <span id="app-awareness-icon">💻</span>
+          <span id="app-awareness-text">Coding</span>
         </div>
 
         <div id="wellness-bubble" class="wellness-bubble interactive hidden" title="Click to dismiss (+10 XP)">
@@ -338,6 +597,16 @@
         <div id="timer-bubble" class="timer-bubble interactive hidden" title="Click to open Focus &amp; Alarm">
           <span id="bubble-phase-icon">🎯</span>
           <span id="bubble-timer-text">25:00</span>
+        </div>
+
+        <!-- Speech Bubble for Minion Voice responses -->
+        <div id="speech-bubble" class="speech-bubble hidden">
+          <span id="speech-bubble-text"></span>
+        </div>
+
+        <!-- Voice Activation Listening Indicator -->
+        <div id="voice-listening-badge" class="voice-listening-badge hidden" title="Listening for your voice...">
+          <span>🎤</span>
         </div>
       </div>
 
@@ -553,6 +822,12 @@
         role="button"
         aria-label="Desktop Mascot Companion"
       >
+        <!-- Idle Zzz Bubbles (shown during napping state) -->
+        <div id="idle-zzz" class="idle-zzz-container hidden">
+          <span class="idle-zzz">Z</span>
+          <span class="idle-zzz">z</span>
+          <span class="idle-zzz">z</span>
+        </div>
         <svg
           id="mascot-svg"
           class="mascot-svg"

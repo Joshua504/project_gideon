@@ -4,7 +4,7 @@
   "description": "A cute, blocky desktop mascot companion with cursor-following eyes, timer, and customization.",
   "main": "main.js",
   "scripts": {
-    "start": "electron . --no-sandbox"
+    "start": "bash start.sh"
   },
   "keywords": [
     "electron",
