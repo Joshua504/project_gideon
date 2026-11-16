@@ -568,20 +568,39 @@ body {
   font-size: 10.5px;
 }
 
+/* Active Activity Icon — pure colored icon hugging the lower-left side of the mascot's body */
 .app-awareness-badge {
-  background: #F0FDF4;
-  border-color: #22C55E;
-  box-shadow: 0 2px 0 #22C55E;
-  color: #166534;
-  font-size: 10.5px;
+  position: absolute;
+  right: calc(100% - 21px);
+  top: 72%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  pointer-events: none;
+  z-index: 12;
+  animation: side-bolt-float 1.6s ease-in-out infinite;
 }
 
-.app-awareness-badge #app-awareness-icon {
-  font-size: 12px;
-  line-height: 1;
+.app-awareness-badge .app-awareness-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.app-awareness-badge .app-awareness-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 1.5px 3px rgba(30, 27, 75, 0.28));
 }
 
 .timer-bubble.alert {
@@ -624,26 +643,25 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Voice Listening Badge — shows when voice activation is listening */
+/* Voice Listening Badge — pure microphone icon hugging the lower-right side of the mascot's body */
 .voice-listening-badge {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #10B981;
-  border: 2px solid #059669;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
+  position: absolute;
+  left: calc(100% - 21px);
+  top: 72%;
+  transform: translateY(-50%);
   pointer-events: none;
   z-index: 12;
-  animation: voice-listen-pulse 1.5s ease-in-out infinite;
+  filter: drop-shadow(0 1.5px 3px rgba(22, 163, 74, 0.32));
+  animation: voice-listen-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes voice-listen-pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    transform: translateY(calc(-50% - 3px)) scale(1.08);
+  }
 }
 
 /* Sleepy / Tired Zzz Indicator */
@@ -683,6 +701,7 @@ body {
   position: absolute;
   left: 10px;
   bottom: 14px;
+  max-height: calc(100% - 24px);
   width: 284px;
   background: #F6F7F9;
   border: 1.5px solid rgba(255, 255, 255, 0.95);
@@ -795,9 +814,18 @@ body {
   border: 1px solid #ECEEF2;
   border-radius: 18px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.popup-inner-card::-webkit-scrollbar {
+  display: none;
 }
 
 .card-subheader {
@@ -862,6 +890,7 @@ body {
 .tab-panel {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;

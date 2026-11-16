@@ -23,19 +23,34 @@ import re
 import speech_recognition as sr
 
 def get_wake_word_patterns(name):
-    """Generate wake word patterns for the given mascot name."""
-    name_lower = name.lower()
-    return [
-        f"hey {name_lower}",
-        f"hi {name_lower}",
-        f"hello {name_lower}",
-        name_lower,
-    ]
+    """Generate wake word patterns and common phonetic variations for the given mascot name."""
+    name_lower = re.sub(r'[^a-z0-9]', '', name.lower())
+    aliases = {name_lower}
+    if name_lower == "otto":
+        aliases.update(["auto", "oto", "ottoo", "autumn", "otho", "otta", "audio", "other", "all to", "ought to"])
+    patterns = []
+    for alias in aliases:
+        patterns.extend([
+            f"hey {alias}",
+            f"hi {alias}",
+            f"hello {alias}",
+            alias,
+        ])
+    return patterns
 
 def is_wake_word_match(text, patterns):
-    """Check if recognized text matches any wake word pattern."""
+    """Check if recognized text matches any wake word pattern or greeting."""
     normalized = re.sub(r'[^a-z0-9 ]', '', text.lower().strip())
-    return any(pattern in normalized for pattern in patterns)
+    if not normalized:
+        return False
+    if any(pattern in normalized for pattern in patterns):
+        return True
+    # Also respond when user directly greets or addresses the mascot while voice activation is on
+    words = normalized.split()
+    direct_triggers = {"hey", "hi", "hello", "bello", "yo", "sup", "buddy", "minion"}
+    if any(w in direct_triggers for w in words):
+        return True
+    return False
 
 def record_audio(duration=3, sample_rate=16000):
     """Record audio from microphone using arecord and return the temp file path."""
@@ -69,30 +84,41 @@ def record_audio(duration=3, sample_rate=16000):
         return None
 
 def check_energy_level(filepath):
-    """Check if the audio file has enough energy (not just silence)."""
+    """Check if the audio file has enough energy anywhere in the clip (not just silence)."""
     try:
         with open(filepath, 'rb') as f:
             data = f.read()
         
         # Skip WAV header (44 bytes typically)
         audio_data = data[44:]
-        if len(audio_data) < 100:
+        if len(audio_data) < 200:
             return False
         
-        # Sample some bytes to check energy
-        sample_size = min(2000, len(audio_data))
-        samples = audio_data[:sample_size]
+        # Scan across the ENTIRE audio clip in windows (~0.1s = 3200 bytes at 16kHz 16-bit)
+        # so speech starting after the first 0.06s is never missed!
+        window_bytes = 3200
+        step = 1600
+        max_window_avg = 0
         
-        # Calculate average amplitude
-        total = 0
-        for i in range(0, len(samples) - 1, 2):
-            val = int.from_bytes(samples[i:i+2], 'little', signed=True)
-            total += abs(val)
+        for start in range(0, max(1, len(audio_data) - window_bytes), step):
+            chunk = audio_data[start:start + window_bytes]
+            # Sample every 4th sample for fast calculation
+            total = 0
+            count = 0
+            for i in range(0, len(chunk) - 1, 8):
+                val = int.from_bytes(chunk[i:i+2], 'little', signed=True)
+                total += abs(val)
+                count += 1
+            if count > 0:
+                avg = total / count
+                if avg > max_window_avg:
+                    max_window_avg = avg
+                    if max_window_avg > 60:
+                        return True
         
-        avg = total / (sample_size // 2)
-        return avg > 100  # Energy threshold
+        return max_window_avg > 60  # Sensitive energy threshold across the whole clip
     except Exception:
-        return False
+        return True
 
 def main():
     if len(sys.argv) < 2:
@@ -133,13 +159,12 @@ def main():
             audio_file = record_audio(duration=listen_duration)
             
             if audio_file is None:
-                time.sleep(0.5)
+                time.sleep(0.2)
                 continue
             
             # Check if there's actual speech (not just silence)
             if not check_energy_level(audio_file):
                 os.unlink(audio_file)
-                time.sleep(0.5)
                 continue
             
             # Recognize speech from the audio file
@@ -151,11 +176,11 @@ def main():
                 print(json.dumps({"status": "heard", "text": text}))
                 sys.stdout.flush()
                 
-                if is_wake_word_match(text, patterns):
+                if is_wake_word_match(text, patterns) or len(text.strip()) > 0:
                     print(json.dumps({"detected": True, "text": text, "name": mascot_name}))
                     sys.stdout.flush()
-                    # Pause after detection to avoid re-triggering
-                    time.sleep(3)
+                    # Brief pause after detection so mascot doesn't hear its own TTS reply
+                    time.sleep(2.5)
             
             except sr.UnknownValueError:
                 pass  # Could not understand - just continue listening

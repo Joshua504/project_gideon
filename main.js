@@ -697,7 +697,7 @@ function createMainWindow() {
     fullscreenable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    focusable: false,
+    focusable: true,
     hasShadow: false,
     show: false,
     webPreferences: {
@@ -906,12 +906,21 @@ function registerIpcHandlers() {
 
   ipcMain.on('window:set-focusable', (_event, focusable) => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
-    // On Linux, keep the window non-focusable to avoid blocking clicks on other apps
+    const shouldFocus = Boolean(focusable);
+    // On Linux (X11/XWayland), calling mainWindow.setFocusable() dynamically after creation
+    // corrupts X11 window hints and blocks all mouse clicks on the window.
+    // Instead, keep focusable:true on the window and only focus/blur when an input is active.
     if (process.platform === 'linux') {
+      if (shouldFocus) {
+        mainWindow.focus();
+      } else {
+        mainWindow.blur();
+        mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      }
       return;
     }
-    mainWindow.setFocusable(Boolean(focusable));
-    if (focusable) {
+    mainWindow.setFocusable(shouldFocus);
+    if (shouldFocus) {
       mainWindow.focus();
     } else {
       mainWindow.blur();
@@ -1177,35 +1186,62 @@ function registerIpcHandlers() {
     return { success: true };
   });
   
-  // Speak text using system TTS (spd-say on Linux, fallback to espeak)
-  ipcMain.handle('voice:speak', async (_event, { text, pitch, rate }) => {
+  // Speak the exact response text with a Minion-pitched voice:
+  // Fetches natural neural speech (Google Translate TTS, with slow=true so speeding it up 1.65x
+  // gives high Minion pitch while keeping every spoken word crystal-clear and intelligible!)
+  ipcMain.handle('voice:speak', async (_event, { text }) => {
     try {
-      // On Linux, use spd-say (Speech Dispatcher) for reliable TTS
-      if (process.platform === 'linux') {
-        return new Promise((resolve) => {
-          const pitchArg = pitch ? Math.round(pitch * 6.5) : '50';
-          const speedArg = rate ? Math.round((rate - 0.5) * 100) : '5';
-          execFile(
-            'spd-say',
-            [text],
-            { env: { ...process.env, SPD_OPTIONS: `pitch=${pitchArg} speed=${speedArg}` } },
-            (error, stdout, stderr) => {
-              if (error) {
-                console.error('[VOICE] spd-say error:', error.message);
-                resolve({ success: false, error: error.message });
-              } else {
-                console.log('[VOICE] spd-say spoke:', text);
-                resolve({ success: true });
-              }
-            }
-          );
-        });
-      } else {
-        // Non-Linux: return success so renderer falls back to speechSynthesis
-        resolve({ success: false, error: 'not on Linux' });
+      const cleanText = String(text || '')
+        .replace(/[^\p{L}\p{N}\s,!?.']/gu, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!cleanText) {
+        return { success: false, error: 'Empty text' };
       }
+
+      // Use ttsspeed=0.24 (slow articulation) so when WebAudio plays it at 1.62x-1.7x speed,
+      // the pitch and vocal formants jump up into the authentic Minion register (+8.5 semitones)
+      // while the actual speaking speed of the words stays natural and clear!
+      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=es&ttsspeed=0.24&q=${encodeURIComponent(
+        cleanText
+      )}`;
+
+      const fetchTtsAudio = (url) =>
+        new Promise((resolve, reject) => {
+          const req = net.request({
+            method: 'GET',
+            url,
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            },
+          });
+          const chunks = [];
+          req.on('response', (res) => {
+            if (res.statusCode !== 200) {
+              reject(new Error(`HTTP ${res.statusCode}`));
+              return;
+            }
+            res.on('data', (c) => chunks.push(Buffer.from(c)));
+            res.on('end', () => {
+              const buf = Buffer.concat(chunks);
+              if (buf.length > 100) {
+                resolve(buf.toString('base64'));
+              } else {
+                reject(new Error('Empty TTS buffer'));
+              }
+            });
+            res.on('error', reject);
+          });
+          req.on('error', reject);
+          req.end();
+        });
+
+      const audioBase64 = await fetchTtsAudio(ttsUrl);
+      return { success: true, audioBase64 };
     } catch (err) {
-      console.error('[VOICE] speak error:', err);
+      console.warn('[VOICE] Neural TTS error:', err.message);
       return { success: false, error: err.message };
     }
   });

@@ -581,11 +581,6 @@
           <span>☁️? Offline</span>
         </div>
 
-        <div id="app-awareness-badge" class="app-awareness-badge interactive hidden" title="Currently focused app">
-          <span id="app-awareness-icon">💻</span>
-          <span id="app-awareness-text">Coding</span>
-        </div>
-
         <div id="wellness-bubble" class="wellness-bubble interactive hidden" title="Click to dismiss (+10 XP)">
           <span id="wellness-bubble-text">💧 Sip some water!</span>
         </div>
@@ -603,11 +598,6 @@
         <div id="speech-bubble" class="speech-bubble hidden">
           <span id="speech-bubble-text"></span>
         </div>
-
-        <!-- Voice Activation Listening Indicator -->
-        <div id="voice-listening-badge" class="voice-listening-badge hidden" title="Listening for your voice...">
-          <span>🎤</span>
-        </div>
       </div>
 
       <!-- Floating Hearts & Sparkles Particle Layer (Head-pats, Treats & Level-Up) -->
@@ -623,6 +613,19 @@
             stroke-width="2.2"
             stroke-linejoin="round"
           />
+        </svg>
+      </div>
+
+      <!-- Pure Activity Icon hugging the Mascot's lower-left body -->
+      <div id="app-awareness-badge" class="app-awareness-badge interactive hidden" title="Currently focused app" aria-label="Currently focused activity">
+        <span id="app-awareness-icon" class="app-awareness-icon" aria-hidden="true"></span>
+      </div>
+
+      <!-- Pure Microphone Icon hugging the Mascot's lower-right body when voice activation is listening -->
+      <div id="voice-listening-badge" class="voice-listening-badge hidden" title="Listening for your voice..." aria-label="Listening for your voice">
+        <svg viewBox="0 0 24 24" width="18" height="22" aria-hidden="true">
+          <rect x="9" y="3" width="6" height="11" rx="3" fill="#4ADE80" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5v3.5" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </div>
 

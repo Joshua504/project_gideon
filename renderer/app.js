@@ -988,18 +988,152 @@ function applySystemTelemetry({ isHighLoad, isOnline }) {
 }
 
 /**
- * App Usage Awareness — maps the focused app category to a mascot reaction.
+ * App Usage Awareness — maps the focused app category to a mascot reaction
+ * and a 3D gradient SVG icon inside the white squircle badge (matching the reference image).
  * Categories: 'coding', 'gaming', 'video', 'browsing', 'music', 'terminal', 'messaging', 'other'
  */
 const APP_CATEGORY_REACTIONS = {
-  coding:    { icon: '💻', label: 'Coding',     expression: 'happy' },
-  gaming:    { icon: '🎮', label: 'Gaming',     expression: 'surprised' },
-  video:     { icon: '📺', label: 'Watching',   expression: 'sleepy' },
-  browsing:  { icon: '🌐', label: 'Browsing',   expression: 'happy' },
-  music:     { icon: '🎵', label: 'Music',      expression: 'wink' },
-  terminal:  { icon: '⌨️', label: 'Terminal',   expression: 'happy' },
-  messaging: { icon: '💬', label: 'Chatting',   expression: 'wink' },
-  other:     { icon: '💻', label: 'Working',    expression: null },
+  coding: {
+    label: 'Coding',
+    expression: 'happy',
+    svg: `
+      <svg viewBox="0 0 28 24" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M9 6L3 12L9 18M19 6L25 12L19 18"
+          fill="none"
+          stroke="#6366F1"
+          stroke-width="3.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+        <line
+          x1="16.2"
+          y1="4.5"
+          x2="11.8"
+          y2="19.5"
+          stroke="#38BDF8"
+          stroke-width="3.2"
+          stroke-linecap="round"
+        />
+      </svg>`,
+  },
+  gaming: {
+    label: 'Gaming',
+    expression: 'surprised',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-gaming" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#A78BFA" />
+            <stop offset="50%" stop-color="#7C3AED" />
+            <stop offset="100%" stop-color="#4C1D95" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M9.5 11C6.2 11 4 14.2 4 18.5C4 23.2 6.4 26.5 9.2 26.5C11.1 26.5 12.6 24.6 14.2 23H21.8C23.4 24.6 24.9 26.5 26.8 26.5C29.6 26.5 32 23.2 32 18.5C32 14.2 29.8 11 26.5 11H9.5Z"
+          fill="url(#act-grad-gaming)"
+        />
+        <path d="M11 15.5V20.5M8.5 18H13.5" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" opacity="0.95" />
+        <circle cx="24" cy="16.5" r="1.6" fill="#FFFFFF" opacity="0.95" />
+        <circle cx="27" cy="19.5" r="1.6" fill="#FFFFFF" opacity="0.95" />
+      </svg>`,
+  },
+  video: {
+    label: 'Watching',
+    expression: 'sleepy',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-video" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#FB7185" />
+            <stop offset="50%" stop-color="#E11D48" />
+            <stop offset="100%" stop-color="#9F1239" />
+          </linearGradient>
+        </defs>
+        <rect x="5" y="8" width="26" height="20" rx="6.5" fill="url(#act-grad-video)" />
+        <path d="M15.2 13.5L23 18L15.2 22.5V13.5Z" fill="#FFFFFF" opacity="0.95" />
+      </svg>`,
+  },
+  browsing: {
+    label: 'Browsing',
+    expression: 'happy',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-browsing" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#60A5FA" />
+            <stop offset="50%" stop-color="#3B82F6" />
+            <stop offset="100%" stop-color="#1D4ED8" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="13" fill="url(#act-grad-browsing)" />
+        <ellipse cx="18" cy="18" rx="6" ry="11.5" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.9" />
+        <line x1="6.5" y1="18" x2="29.5" y2="18" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+      </svg>`,
+  },
+  music: {
+    label: 'Music',
+    expression: 'wink',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-music" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#F472B6" />
+            <stop offset="50%" stop-color="#EC4899" />
+            <stop offset="100%" stop-color="#BE185D" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="13" fill="url(#act-grad-music)" />
+        <path
+          d="M15 22.5C15 23.9 13.7 25 12.2 25S9.5 23.9 9.5 22.5 10.8 20 12.2 20C12.8 20 13.4 20.2 13.8 20.5V13L23.5 10.8V20.5C23.5 21.9 22.2 23 20.8 23S18 21.9 18 20.5 19.3 18 20.8 18C21.4 18 21.9 18.2 22.3 18.5V14L15 15.7V22.5Z"
+          fill="#FFFFFF"
+          opacity="0.95"
+        />
+      </svg>`,
+  },
+  terminal: {
+    label: 'Terminal',
+    expression: 'happy',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-terminal" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#818CF8" />
+            <stop offset="50%" stop-color="#4F46E5" />
+            <stop offset="100%" stop-color="#312E81" />
+          </linearGradient>
+        </defs>
+        <rect x="5" y="7" width="26" height="22" rx="6.5" fill="url(#act-grad-terminal)" />
+        <path d="M11.5 14L16 18L11.5 22" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.95" />
+        <line x1="18.5" y1="22" x2="24" y2="22" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" opacity="0.95" />
+      </svg>`,
+  },
+  messaging: {
+    label: 'Chatting',
+    expression: 'wink',
+    svg: `
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="act-grad-messaging" x1="15%" y1="5%" x2="85%" y2="95%">
+            <stop offset="0%" stop-color="#34D399" />
+            <stop offset="50%" stop-color="#10B981" />
+            <stop offset="100%" stop-color="#047857" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M18 6C10.8 6 5 11 5 17.2C5 20.1 6.3 22.8 8.5 24.8L7.2 29.5L12.4 27.6C14.1 28.1 16 28.4 18 28.4C25.2 28.4 31 23.4 31 17.2C31 11 25.2 6 18 6Z"
+          fill="url(#act-grad-messaging)"
+        />
+        <circle cx="13.5" cy="17.2" r="1.8" fill="#FFFFFF" opacity="0.95" />
+        <circle cx="18" cy="17.2" r="1.8" fill="#FFFFFF" opacity="0.95" />
+        <circle cx="22.5" cy="17.2" r="1.8" fill="#FFFFFF" opacity="0.95" />
+      </svg>`,
+  },
+  other: {
+    label: 'Working',
+    expression: null,
+    svg: '',
+  },
 };
 
 function applyAppAwareness({ category, name }) {
@@ -1015,13 +1149,16 @@ function applyAppAwareness({ category, name }) {
   state.focusedAppCategory = category;
   state.focusedAppName = name || '';
 
-  // Update the floating badge
-  if (dom.appAwarenessBadge && dom.appAwarenessIcon && dom.appAwarenessText) {
-    const isOther = category === 'other';
+  // Update the floating squircle icon badge (icon only, no text)
+  if (dom.appAwarenessBadge && dom.appAwarenessIcon) {
+    const isOther = category === 'other' || !reaction.svg;
     dom.appAwarenessBadge.classList.toggle('hidden', isOther);
-    dom.appAwarenessIcon.textContent = reaction.icon;
-    dom.appAwarenessText.textContent = reaction.label;
-    dom.appAwarenessBadge.title = `Focused app: ${name || category}`;
+    if (!isOther && prevCategory !== category) {
+      dom.appAwarenessIcon.innerHTML = reaction.svg;
+    } else if (!isOther && !dom.appAwarenessIcon.innerHTML) {
+      dom.appAwarenessIcon.innerHTML = reaction.svg;
+    }
+    dom.appAwarenessBadge.title = `${reaction.label}${name ? ` (${name})` : ''}`;
   }
 
   // Trigger a temporary expression when the category changes (not on 'other')
@@ -1475,8 +1612,71 @@ const MINION_RESPONSES = [
 ];
 
 /**
- * Speaks text using Web Speech API with Minion-like voice parameters.
- * Shows a speech bubble with the text while speaking.
+ * Plays the spoken response MP3 through WebAudio with Minion vocal DSP:
+ * - Source TTS is generated at slow speed (ttsspeed=0.24) with Romance-accented inflection
+ * - Playing back at 1.65x shifts both pitch and vocal-tract formants up by ~8.5 semitones
+ *   (the exact Pierre Coffin Minion studio technique) while keeping word cadence clear!
+ * - Subtle vibrato LFO + nasal bandpass EQ gives it lively cartoon warmth instead of flat TTS.
+ */
+async function playMinionAudioBuffer(base64Audio) {
+  const ctx = ensureAudioContext();
+  if (!ctx) throw new Error('AudioContext unavailable');
+
+  const binaryStr = atob(base64Audio);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+
+  const audioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0));
+
+  const source = ctx.createBufferSource();
+  source.buffer = audioBuffer;
+  // 1.65x on slow-articulated speech gives high Minion pitch + formants at normal speaking speed!
+  source.playbackRate.value = 1.65;
+
+  // Add subtle animated pitch wobble (LFO on detune) so the voice has bouncy cartoon inflection
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = 6.2; // 6.2 Hz lively vocal inflection
+  lfoGain.gain.value = 38;   // +/- 38 cents pitch modulation
+  lfo.connect(lfoGain);
+  lfoGain.connect(source.detune);
+
+  // Filter chain: cut low bass (<300Hz) and boost nasal Minion resonance (1.6kHz - 2.4kHz)
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 310;
+
+  const nasalBoost = ctx.createBiquadFilter();
+  nasalBoost.type = 'peaking';
+  nasalBoost.frequency.value = 1950;
+  nasalBoost.Q.value = 1.3;
+  nasalBoost.gain.value = 6.5;
+
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = 1.25;
+
+  source.connect(highpass);
+  highpass.connect(nasalBoost);
+  nasalBoost.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  source.onended = () => {
+    try {
+      lfo.stop();
+    } catch (_e) {
+      // Ignore
+    }
+    setTimeout(hideSpeechBubble, 450);
+  };
+
+  lfo.start(0);
+  source.start(0);
+}
+
+/**
+ * Speaks the actual response text in a Minion-pitched voice and shows the speech bubble.
  */
 function speakMinion(text) {
   console.log('[VOICE] speakMinion called with:', text);
@@ -1492,35 +1692,39 @@ function speakMinion(text) {
   }
 
   state.speaking = true;
-  triggerTemporaryExpression('surprised', 2000, true);
+  triggerTemporaryExpression('surprised', 2400, true);
+  dom.mascotWrapper.classList.remove('hopping');
+  void dom.mascotWrapper.offsetWidth;
+  dom.mascotWrapper.classList.add('hopping');
   spawnParticles(['🍌', '💛', '✨'], 3);
 
-  // Try system TTS via main process (spd-say on Linux) — most reliable
   if (window.mascotAPI.speakText) {
-    console.log('[VOICE] calling system TTS via IPC...');
     window.mascotAPI.speakText(text, MINION_VOICE_PITCH, MINION_VOICE_RATE)
-      .then((result) => {
-        if (result && result.success) {
-          console.log('[VOICE] system TTS succeeded');
-        } else {
-          console.warn('[VOICE] system TTS failed, falling back to speechSynthesis');
+      .then(async (result) => {
+        if (result && result.success && result.audioBase64) {
+          try {
+            await playMinionAudioBuffer(result.audioBase64);
+            return;
+          } catch (decodeErr) {
+            console.warn('[VOICE] WebAudio decode error, falling back:', decodeErr);
+          }
+        }
+        if (!result || !result.success) {
           fallbackSpeechSynthesis(text);
         }
       })
       .catch((err) => {
-        console.warn('[VOICE] system TTS error, falling back to speechSynthesis:', err);
+        console.warn('[VOICE] TTS error, falling back to speechSynthesis:', err);
         fallbackSpeechSynthesis(text);
       });
   } else {
-    console.warn('[VOICE] speakText IPC not available, using speechSynthesis');
     fallbackSpeechSynthesis(text);
   }
 
-  // Auto-hide speech bubble after 4 seconds max
+  // Auto-hide speech bubble after 4.5 seconds max
   state.speechBubbleTimer = setTimeout(() => {
-    console.log('[VOICE] auto-hiding speech bubble (timeout)');
     hideSpeechBubble();
-  }, 4000);
+  }, 4500);
 }
 
 /**
@@ -2586,6 +2790,17 @@ function setupTimerControls() {
     input.addEventListener('blur', () => window.mascotAPI.setFocusable(false));
   });
 
+  if (dom.popupMenu) {
+    const searchBox = dom.popupMenu.querySelector('.panel-search-box');
+    if (searchBox && dom.panelSearchInput) {
+      searchBox.addEventListener('click', (e) => {
+        if (e.target !== dom.panelSearchInput) {
+          dom.panelSearchInput.focus();
+        }
+      });
+    }
+  }
+
   dom.timerStartBtn.addEventListener('click', startTimer);
   dom.timerPauseBtn.addEventListener('click', pauseTimer);
   dom.timerResumeBtn.addEventListener('click', resumeTimer);
@@ -2817,14 +3032,9 @@ async function init() {
       console.log('[VOICE-ACT] Wake word detected via Python:', payload);
       handleNameCallResponse({
         name: payload.name || 'Otto',
+        text: payload.text || '',
         voiceEnabled: payload.voiceEnabled !== false,
       });
-      // Restart listening after response
-      setTimeout(() => {
-        if (state.settings && state.settings.voiceActivation) {
-          startVoiceListening();
-        }
-      }, 5000);
     });
     console.log('[VOICE-ACT] IPC subscription for wake word detection registered');
   }
